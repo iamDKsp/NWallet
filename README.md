@@ -40,3 +40,28 @@ Depois abra no navegador: **[http://localhost:5173](http://localhost:5173)**
 - **Assistente de Inteligência Artificial (Nexus):**
   - Botão holográfico pulsante na barra inferior.
   - Integração via endpoint `/api/chat` para conversas financeiras inteligentes em tempo real.
+
+---
+
+## 🐳 Como Subir no Portainer
+
+### Método 1: Via Stack (Git Repository) - Recomendado
+
+1. No painel do seu **Portainer**, vá em **Stacks** > **Add stack**.
+2. Defina o nome da stack (ex: `nwallet`).
+3. Em **Build method**, selecione **Repository**.
+4. Preencha os campos:
+   * **Repository URL:** `https://github.com/iamDKsp/NWallet.git`
+   * **Repository reference:** `refs/heads/main`
+   * **Compose path:** `docker-compose.yml`
+   *(Se o seu repositório for privado, ative a opção **Authentication** e informe seu usuário do GitHub e Personal Access Token).*
+5. Clique em **Deploy the stack**.
+
+### Método 2: Via Docker CLI / Compose Manual
+
+```bash
+docker compose up -d --build
+```
+
+A aplicação ficará disponível na porta `5173`:
+👉 `http://SEU_IP_DO_SERVIDOR:5173`

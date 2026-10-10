@@ -50,7 +50,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 2. Static file serving
+  // 2. Health check for Portainer / Docker
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', uptime: process.uptime() }));
+    return;
+  }
+
+  // 3. Static file serving
   const urlPath = req.url.split('?')[0];
   let filePath = path.join(PUBLIC_DIR, urlPath);
 
