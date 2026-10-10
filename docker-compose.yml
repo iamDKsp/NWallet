@@ -7,14 +7,15 @@ services:
       dockerfile: Dockerfile
     image: iamdksp/nwallet:latest
     container_name: nwallet-app
+    network_mode: "bridge"
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "3950:3950"
     environment:
-      - PORT=5173
+      - PORT=3950
       - NODE_ENV=production
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 5173) + '/health', (r) => { if (r.statusCode === 200) process.exit(0); else process.exit(1); })\""]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 3950) + '/health', (r) => { if (r.statusCode === 200) process.exit(0); else process.exit(1); })\""]
       interval: 30s
       timeout: 5s
       retries: 3

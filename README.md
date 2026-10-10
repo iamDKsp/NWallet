@@ -63,5 +63,5 @@ Depois abra no navegador: **[http://localhost:5173](http://localhost:5173)**
 docker compose up -d --build
 ```
 
-A aplicação ficará disponível na porta `5173`:
-👉 `http://SEU_IP_DO_SERVIDOR:5173`
+A aplicação ficará disponível na porta `3950`:
+👉 `http://SEU_IP_DO_SERVIDOR:3950`
