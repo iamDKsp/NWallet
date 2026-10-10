@@ -11,6 +11,8 @@ services:
     restart: unless-stopped
     ports:
       - "3950:3950"
+    volumes:
+      - nwallet-data:/app/data
     environment:
       - PORT=3950
       - NODE_ENV=production
@@ -20,3 +22,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+
+volumes:
+  nwallet-data:

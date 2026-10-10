@@ -12,6 +12,7 @@ ENV PORT=3950
 COPY package*.json ./
 COPY server.js ./
 COPY public/ ./public/
+RUN mkdir -p /app/data && chown node:node /app/data
 
 # Instalação segura de dependências
 RUN npm install --omit=dev --ignore-scripts || true

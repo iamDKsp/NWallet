@@ -1,0 +1,199 @@
+/* NWallet Desktop Responsive Design System */
+/* Only applied on screens >= 768px; mobile (< 768px) is 100% untouched */
+
+.desktop-only {
+  display: none !important;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+  
+  .desktop-only {
+    display: flex !important;
+  }
+
+  /* Unlock root and document viewport for desktop */
+  html, body {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+    background-color: #05080d !important;
+    scrollbar-width: thin !important;
+  }
+
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Full-width responsive desktop shell */
+  .desktop-shell {
+    width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background-color: #05080d !important;
+    color: #ffffff !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  /* Glassmorphic Topbar Navigation */
+  .desktop-topbar {
+    flex: 0 0 64px !important;
+    height: 64px !important;
+    position: relative !important;
+    z-index: 100 !important;
+    backdrop-filter: blur(28px) !important;
+    -webkit-backdrop-filter: blur(28px) !important;
+    background: rgba(5, 8, 13, 0.85) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 0 2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Dedicated Desktop Scroll Viewport - Enables full mousewheel, trackpad, and keyboard scrolling */
+  .desktop-main-viewport {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: calc(100vh - 64px) !important;
+    max-height: calc(100vh - 64px) !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    scroll-behavior: smooth !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 255, 255, 0.22) rgba(5, 8, 13, 0.6) !important;
+  }
+
+  /* Custom visible sleek scrollbar for desktop */
+  .desktop-main-viewport::-webkit-scrollbar,
+  .desktop-shell *::-webkit-scrollbar {
+    width: 10px !important;
+    height: 10px !important;
+    display: block !important;
+  }
+  .desktop-main-viewport::-webkit-scrollbar-track,
+  .desktop-shell *::-webkit-scrollbar-track {
+    background: rgba(5, 8, 13, 0.6) !important;
+  }
+  .desktop-main-viewport::-webkit-scrollbar-thumb,
+  .desktop-shell *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border-radius: 8px !important;
+    border: 2px solid rgba(5, 8, 13, 0.6) !important;
+  }
+  .desktop-main-viewport::-webkit-scrollbar-thumb:hover,
+  .desktop-shell *::-webkit-scrollbar-thumb:hover {
+    background: rgba(82, 183, 83, 0.6) !important;
+  }
+
+  /* On desktop, disable inner overflow-y-auto so the main viewport scrolls smoothly without nested scroll traps */
+  .desktop-main-viewport .overflow-y-auto {
+    overflow-y: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Reset mobile safe areas inside desktop viewport */
+  .desktop-main-viewport [style*="safe-area-inset-top"] {
+    padding-top: 1.25rem !important;
+  }
+
+  /* Main responsive content container */
+  .desktop-container {
+    max-width: 1360px !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 1.75rem 2rem 5rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Responsive Multi-column Grid: Flexible Left (Main) + Fixed 370px Right (Sidebar) */
+  .desktop-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 1.75rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    align-items: start !important;
+  }
+
+  @media (min-width: 1100px) {
+    .desktop-grid {
+      grid-template-columns: minmax(0, 1fr) 370px !important;
+    }
+  }
+
+  /* Glassmorphic cards & panels */
+  .desktop-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 1.75rem !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  }
+
+  .desktop-card:hover {
+    border-color: rgba(82, 183, 83, 0.25) !important;
+  }
+
+  .desktop-card.overflow-visible {
+    overflow: visible !important;
+  }
+
+  /* Unblur and restore full visibility to Estatísticas & all desktop screens */
+  .desktop-shell div[style*="filter"],
+  .desktop-shell div[style*="blur"] {
+    filter: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Nexus AI Assistant - Slide-Over Drawer on the Right */
+  #chat-container {
+    position: fixed !important;
+    inset: 0 0 0 auto !important;
+    width: 440px !important;
+    max-width: 440px !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.75) !important;
+    border-radius: 0 !important;
+    z-index: 250 !important;
+  }
+
+  /* Centered Modals & Dialogs on Desktop */
+  .modal-dialog-desktop {
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(0, 0, 0, 0.65) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  .modal-dialog-desktop > div {
+    border-radius: 2rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8) !important;
+  }
+}

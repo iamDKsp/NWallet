@@ -1,5 +1,13 @@
 # NWallet 💳✨
 
+## Primeira etapa funcional: meu financeiro
+
+A base financeira pessoal está em **[http://localhost:3950/financeiro.html](http://localhost:3950/financeiro.html)**. A tela inicial existente foi preservada porque recebeu alterações simultâneas de outro trabalho.
+
+Essa página permite registrar contas com saldos iniciais, gastos, recebimentos CLT/empresa, transferências, cartões, faturas, empréstimos e compromissos previstos. Os dados são persistidos no servidor; o controle começa vazio, sem valores de demonstração.
+
+Veja [FINANCEIRO.md](FINANCEIRO.md) para começar, entender os cálculos, fazer backup e acessar pelo celular. Execute `npm test` para verificar as regras financeiras e a persistência.
+
 Aplicação de gestão financeira pessoal de alta fidelidade com design iOS (simulação Apple iPhone 15 Pro HIG), animações fluidas em Framer Motion, inclinação 3D interativa de cartões de crédito e assistente de IA (**Nexus**) integrado.
 
 ---

@@ -1,0 +1,101 @@
+/* ==========================================================================
+   NWallet - Native Mobile Experience Design System
+   Optimized for iOS (Safari, PWA) & Android (Chrome, PWA)
+   ========================================================================== */
+
+/* 1. Root & Viewport Lock: Prevents elastic bouncing, page pan, and unwanted zooming */
+@media (max-width: 767px) {
+  html,
+  body {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    min-height: 100% !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: pan-y !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-text-size-adjust: 100% !important;
+    background-color: #05080d !important;
+  }
+
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    position: fixed !important;
+    inset: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* 2. Inertial Native Scrolling in Scroll Areas */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    scroll-behavior: smooth !important;
+    max-width: 100vw !important;
+  }
+
+  /* 3. Horizontal Carousels: Native Touch Gesture Containment */
+  .overflow-x-auto,
+  [drag="x"] {
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain !important;
+    touch-action: pan-x !important;
+  }
+
+  /* 4. Input Zoom Prevention: iOS Safari zooms viewport if font-size < 16px */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+  }
+
+  /* 5. Mobile Floating Bottom Navigation - Ergonomic Touch Spacing */
+  nav {
+    backdrop-filter: blur(32px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+    touch-action: manipulation !important;
+  }
+
+  /* Interactive Buttons Touch Target Guarantee */
+  button,
+  [role="button"] {
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
+  }
+
+  /* 6. Dialogs & Bottom Sheets: Safe-Area & Keyboard Friendly */
+  dialog,
+  [role="dialog"] {
+    max-height: 92dvh !important;
+  }
+
+  /* Hide scrollbars cleanly across all engines */
+  *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+}

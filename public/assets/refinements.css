@@ -1,0 +1,83 @@
+/* Additive refinements to the original NWallet components and visual identity. */
+#root button:focus-visible,
+#root [role="button"]:focus-visible { outline: 2px solid #81c784; outline-offset: 4px; }
+#root input:focus-visible,
+#root select:focus-visible,
+#root textarea:focus-visible { outline: 2px solid #81c784; outline-offset: 4px; border-radius: 6px; }
+.nw-amount-expense { color: #f29a9a !important; }
+.nw-amount-income { color: #81c784 !important; }
+
+/* These responsive variants are missing from the original compiled stylesheet. */
+@media (min-width: 768px) {
+  .desktop-shell [class~="md:grid-cols-2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .desktop-shell [class~="md:grid-cols-4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .desktop-container { padding-bottom: 3rem !important; }
+  .desktop-grid { gap: 1.5rem !important; }
+  .desktop-grid > div,
+  .desktop-card > [class~="grid"] > div { min-width: 0; }
+  .desktop-card [class~="text-zinc-400"],
+  .desktop-card [class~="text-gray-400"] { color: #a6afbd; }
+  .desktop-card [class~="text-white/40"] { color: #9ba5b4; }
+  .desktop-card [class~="text-[9px]"] { font-size: 10px; }
+  .desktop-topbar nav button,
+  .desktop-topbar > div:last-child > button { min-height: 42px; }
+  .desktop-topbar > div:last-child > div { max-width: 160px; min-height: 42px; }
+  .desktop-topbar > div:last-child > div > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+}
+@media (min-width: 1200px) {
+  .desktop-shell [class~="md:grid-cols-4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 768px) and (max-width: 1099px) {
+  .desktop-topbar { flex-wrap: wrap; gap: 14px; padding: 16px 24px !important; }
+  .desktop-topbar > nav { order: 3; flex-basis: 100%; justify-content: center; }
+  .desktop-topbar nav button { flex: 1; justify-content: center; padding-left: 12px; padding-right: 12px; }
+  .desktop-container { padding: 24px 24px 48px !important; }
+  .desktop-grid > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+
+/* Keep the existing entry sheet, with readable labels and bounded scrolling. */
+.nw-entry-panel { max-height: calc(100dvh - 24px); }
+.nw-entry-panel > div:has(> form) { min-height: 0; overscroll-behavior: contain; }
+.nw-entry-panel label { font-size: 11px; opacity: .76; letter-spacing: .09em; }
+.nw-entry-panel input::placeholder { opacity: .5; }
+.nw-entry-panel form input,
+.nw-entry-panel form select { min-height: 44px; }
+.nw-entry-panel form input[type="number"] { font-variant-numeric: tabular-nums; font-size: clamp(40px, 12vw, 56px) !important; }
+.nw-entry-panel form button { min-height: 40px; }
+.nw-entry-panel [data-nw-close] { min-width: 40px; min-height: 40px; }
+.nw-entry-panel form [class~="grid-cols-2"] { gap: 20px; }
+.nw-entry-panel form[class~="space-y-10"] > :not(:first-child) { margin-top: 28px; }
+.nw-entry-panel select option { background: #0d121d; color: #eef2f6; }
+@media (min-width: 768px) {
+  .nw-entry-overlay { position: fixed !important; inset: 0 !important; align-items: center !important; padding: 24px; }
+  .nw-entry-panel { width: min(520px, 100%) !important; max-width: 520px !important; height: min(810px, calc(100dvh - 48px)) !important; border-radius: 32px !important; border: 1px solid rgba(255,255,255,.1); }
+}
+@media (max-width: 767px) {
+  #root header h1 { min-width: 0; font-size: 17px; overflow-wrap: anywhere; }
+  #root header > div { min-width: 0; }
+  #root header > button { flex-shrink: 0; }
+  #root #notif-btn,
+  #root #add-card { min-width: 40px; min-height: 40px; }
+  #root #expense-action,
+  #root #income-action,
+  #root #import-action { min-height: 72px; }
+  #root [class~="text-gray-400"] { color: #9ba5b4; }
+  .nw-mobile-dock { width: calc(100% - 32px) !important; max-width: 350px !important; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px) !important; }
+  .nw-mobile-dock > div { height: 56px; }
+  .nw-mobile-dock button[data-nav-label] { height: 54px; flex-direction: column; gap: 3px; }
+  .nw-mobile-dock button[data-nav-label]::after { content: attr(data-nav-label); font-size: 9px; line-height: 12px; font-weight: 600; letter-spacing: .01em; position: relative; z-index: 1; }
+  .nw-mobile-dock button[aria-current="page"]::after { color: #81c784; }
+  .nw-mobile-dock button[aria-current="page"] > .absolute { width: 36px; height: 36px; top: 2px; }
+  .nw-mobile-dock button[data-nav-label]::after { white-space: nowrap; }
+  #root svg[viewBox="0 0 280 140"] { max-width: calc(100vw - 48px); height: auto; }
+  .nw-entry-panel { height: min(90dvh, 850px) !important; }
+  .nw-entry-panel > div:has(> form) { padding-left: 24px; padding-right: 24px; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 359px) {
+  #root header h1 { font-size: 15px; }
+  .nw-mobile-dock { width: calc(100% - 24px) !important; }
+  .nw-entry-panel > div:has(> form) { padding-left: 20px; padding-right: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root *, #root *::before, #root *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
