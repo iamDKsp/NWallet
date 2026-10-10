@@ -1,0 +1,20 @@
+{
+  "name": "mellisa-wallet",
+  "version": "1.0.0",
+  "description": "Mellisa Wallet - Gestão Financeira Inteligente com IA",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "finance",
+    "wallet",
+    "ai",
+    "framer-motion",
+    "react",
+    "tailwind"
+  ],
+  "author": "iamDKsp",
+  "license": "ISC"
+}
