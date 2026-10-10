@@ -2,7 +2,7 @@
 export const SCOPES = { personal: 'Pessoal', business: 'Empresa' };
 export const METHODS = { pix: 'Pix', debit: 'Débito', cash: 'Dinheiro', boleto: 'Boleto', transfer: 'Transferência', credit: 'Crédito' };
 export const SOURCES = { clt: 'CLT', company: 'Empresa', other: 'Outros' };
-export const CATEGORIES = ['Alimentação', 'Moradia', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Compras', 'Assinaturas', 'Impostos', 'Empresa', 'Empréstimos', 'Outros'];
+export const CATEGORIES = ['Alimentação', 'Moradia', 'Transporte', 'Saúde', 'Educação', 'Lazer', 'Compras', 'Assinaturas', 'Impostos', 'Empresa', 'Empréstimos', 'Financiamento', 'Pensão', 'Outros'];
 export const money = cents => (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 export const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export function uid() {
@@ -78,6 +78,7 @@ export function validateState(s) {
     if (credit) assert(e.status === 'posted' && Number.isInteger(e.installments) && e.installments >= 1 && e.installments <= 360 && e.amountCents >= e.installments, 'Parcelamento do cartão inválido.');
     if (e.type === 'card_payment') assert(card && e.paymentMethod !== 'credit' && validDate(e.invoiceDate), 'Fatura inválida.');
   }
+  validatePlans(s);
   return s;
 }
 export function entryScope(s, e) {
@@ -154,4 +155,67 @@ export function summary(s, month, scope='all', asOf=today()) {
   const debtCents = s.entries.filter(e=>match(e) && e.status==='planned' && e.commitmentKind==='loan').reduce((v,e)=>v+e.amountCents,0);
   const cardDebtCents = invoices(s,asOf).filter(i=>scope==='all'||i.scope===scope).reduce((v,i)=>v+Math.max(0,i.remainingCents),0);
   return {incomeCents,expenseCents,payableCents,receivableCents,balanceCents,categories,debtCents,cardDebtCents};
+}
+
+export const newPlans = () => ({payrolls:[],debts:[],recurrences:[],payrollRuns:[]});
+export const plansOf = s => s.plans || newPlans();
+export const ensurePlans = s => (s.plans ||= newPlans());
+function validMonth(m) { return typeof m==='string' && validDate(m+'-01'); }
+function validatePlans(s) {
+  if(!s.plans)return;
+  const p=s.plans;
+  for(const key of ['payrolls','debts','recurrences','payrollRuns'])assert(Array.isArray(p[key])&&p[key].length<=10000,'Configuração financeira inválida.');
+  const ids=new Set([...s.accounts,...s.cards,...s.entries].map(x=>x.id));
+  for(const item of [...p.payrolls,...p.debts,...p.recurrences,...p.payrollRuns]){
+    assert(item&&shortText(item.id)&&!ids.has(item.id),'Identificador de configuração inválido ou repetido.');ids.add(item.id);
+  }
+  for(const pay of p.payrolls){
+    assert(shortText(pay.name)&&amount(pay.baseCents)&&Number.isInteger(pay.payDay)&&pay.payDay>=1&&pay.payDay<=31&&validMonth(pay.startMonth),'Folha de pagamento inválida.');
+    assert(s.accounts.some(a=>a.id===pay.accountId&&a.scope==='personal'),'A folha precisa de uma conta pessoal para receber o salário.');
+    assert(typeof pay.active==='boolean'&&Array.isArray(pay.deductions)&&pay.deductions.length<=100,'Descontos da folha inválidos.');
+    const deductions=new Set();
+    for(const d of pay.deductions){
+      assert(shortText(d.id)&&!deductions.has(d.id)&&shortText(d.name),'Desconto inválido ou repetido.');deductions.add(d.id);
+      assert(['fixed','percent'].includes(d.mode)&&['other','tax','pension'].includes(d.kind)&&typeof d.active==='boolean','Tipo de desconto inválido.');
+      assert(d.mode==='fixed'?amount(d.amountCents):Number.isInteger(d.rateBps)&&d.rateBps>0&&d.rateBps<=10000,'Valor ou percentual do desconto inválido.');
+      assert(validMonth(d.startMonth)&&(!d.endMonth||(validMonth(d.endMonth)&&d.endMonth>=d.startMonth)),'Período do desconto inválido.');
+    }
+  }
+  for(const debt of p.debts){
+    assert(shortText(debt.name)&&['payroll_loan','financing','loan'].includes(debt.kind)&&amount(debt.installmentCents),'Contrato inválido.');
+    assert(Number.isInteger(debt.installments)&&debt.installments>=1&&debt.installments<=600&&validDate(debt.firstDueDate),'Parcelas do contrato inválidas.');
+    assert(validDate(addMonths(debt.firstDueDate,debt.installments-1)),'As parcelas excedem o período permitido.');
+    if(debt.kind==='payroll_loan')assert(p.payrolls.some(pay=>pay.id===debt.payrollId),'Vincule o consignado a uma folha de pagamento.');
+    else assert(s.accounts.some(a=>a.id===debt.accountId),'Informe a conta para pagar o contrato.');
+  }
+  for(const r of p.recurrences){
+    assert(shortText(r.name)&&['income','expense'].includes(r.type)&&['fixed','variable'].includes(r.amountMode),'Recorrência inválida.');
+    assert(r.amountMode==='fixed'?amount(r.amountCents):signedAmount(r.amountCents)&&r.amountCents>=0,'Valor da recorrência inválido.');
+    assert(s.accounts.some(a=>a.id===r.accountId)&&Number.isInteger(r.day)&&r.day>=1&&r.day<=31&&Object.hasOwn(METHODS,r.paymentMethod)&&r.paymentMethod!=='credit','Conta ou vencimento da recorrência inválido.');
+    assert(typeof r.active==='boolean'&&validMonth(r.startMonth)&&(!r.endMonth||(validMonth(r.endMonth)&&r.endMonth>=r.startMonth)),'Período da recorrência inválido.');
+    assert(r.type==='expense'?CATEGORIES.includes(r.category):Object.hasOwn(SOURCES,r.source),'Categoria ou origem da recorrência inválida.');
+  }
+  const runs=new Set();
+  for(const run of p.payrollRuns){
+    const pay=p.payrolls.find(pay=>pay.id===run.payrollId),e=s.entries.find(e=>e.id===run.entryId),key=run.payrollId+':'+run.month;
+    assert(pay&&validMonth(run.month)&&validDate(run.date)&&!runs.has(key),'Folha mensal inválida ou já recebida.');runs.add(key);
+    assert(amount(run.baseCents)&&signedAmount(run.netCents)&&run.netCents>0&&Array.isArray(run.deductions),'Recebimento da folha inválido.');
+    let deductionCents=0;const linked=new Set();
+    for(const d of run.deductions){
+      assert(shortText(d.name)&&amount(d.amountCents),'Desconto confirmado inválido.');deductionCents+=d.amountCents;
+      if(d.debtId){assert(p.debts.some(x=>x.id===d.debtId&&x.payrollId===pay.id)&&!linked.has(d.debtId),'Consignado inválido ou repetido na folha.');linked.add(d.debtId);}
+    }
+    assert(run.baseCents-deductionCents===run.netCents,'Os descontos não correspondem ao salário líquido.');
+    assert(e&&e.type==='income'&&e.source==='clt'&&e.status==='posted'&&e.amountCents===run.netCents&&e.accountId===pay.accountId&&e.date===run.date,'O salário líquido deve estar vinculado ao recebimento da folha.');
+  }
+  const occurrences=new Set();
+  for(const e of s.entries){
+    if(e.occurrenceKey){assert(shortText(e.occurrenceKey)&&!occurrences.has(e.occurrenceKey),'Este compromisso mensal já foi registrado.');occurrences.add(e.occurrenceKey);}
+    if(e.debtId){const debt=p.debts.find(d=>d.id===e.debtId);assert(debt&&debt.kind!=='payroll_loan'&&e.type==='expense'&&e.amountCents===debt.installmentCents,'Pagamento de contrato inválido.');}
+    if(e.recurrenceId)assert(p.recurrences.some(r=>r.id===e.recurrenceId),'Recorrência vinculada não encontrada.');
+  }
+  for(const debt of p.debts){
+    const count=s.entries.filter(e=>e.debtId===debt.id&&e.status==='posted').length+p.payrollRuns.filter(r=>r.deductions.some(d=>d.debtId===debt.id)).length;
+    assert(count<=debt.installments,'O número de pagamentos supera as parcelas restantes cadastradas.');
+  }
 }
