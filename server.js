@@ -28,14 +28,56 @@ async function readBody(req) {
 async function createServer() {
   const {emptyState,validateLedger} = await import(pathToFileURL(path.join(PUBLIC_DIR,'finance.mjs')));
   await fsp.mkdir(DATA_DIR,{recursive:true});
+  const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.DATA_DIR && process.env.DATA_DIR.includes('.test-data'));
+  const SEED_FILE = path.resolve(process.env.SEED_FILE || path.join(__dirname, 'seed-wallet.json'));
   let stored;
   try {
     stored = JSON.parse(await fsp.readFile(DATA_FILE,'utf8'));
     validateLedger(stored.state);
     if (!Number.isSafeInteger(stored.revision) || stored.revision<0) throw new Error('Revisão inválida.');
+
+    const shouldAutoSeed = !isTest && fs.existsSync(SEED_FILE) && (
+      process.env.FORCE_SEED === 'true' ||
+      !stored.state.accounts || stored.state.accounts.length === 0 ||
+      !stored.state.accounts.some(a => a.id === 'account-santander') ||
+      !stored.state.plans?.debts?.some(d => d.id === 'debt-consignado-1')
+    );
+
+    if (shouldAutoSeed) {
+      try {
+        const seed = JSON.parse(await fsp.readFile(SEED_FILE, 'utf8'));
+        if (seed.state) {
+          validateLedger(seed.state);
+          await fsp.copyFile(DATA_FILE, path.join(DATA_DIR, 'wallet.backup-pre-nwfinance.json'));
+          const nextRevision = Math.max((stored.revision || 0) + 1, seed.revision || 1);
+          stored = { revision: nextRevision, state: seed.state };
+          await fsp.writeFile(DATA_FILE, JSON.stringify(stored, null, 2), 'utf8');
+          console.log('[NWallet] Banco de dados existente atualizado automaticamente com os dados reais do NWFINANCE!');
+        }
+      } catch (seedErr) {
+        console.error('[NWallet] Aviso: Falha ao aplicar seed automático:', seedErr.message);
+      }
+    }
   } catch (err) {
     if (err.code !== 'ENOENT') throw new Error(`Não foi possível ler os dados salvos. O arquivo foi preservado: ${err.message}`);
-    stored = {revision:0,state:emptyState()};
+    let seeded = false;
+    if (!isTest && fs.existsSync(SEED_FILE)) {
+      try {
+        const seed = JSON.parse(await fsp.readFile(SEED_FILE, 'utf8'));
+        if (seed.state) {
+          validateLedger(seed.state);
+          stored = { revision: seed.revision || 1, state: seed.state };
+          await fsp.writeFile(DATA_FILE, JSON.stringify(stored, null, 2), 'utf8');
+          console.log('[NWallet] Base de dados inicializada com sucesso a partir de seed-wallet.json.');
+          seeded = true;
+        }
+      } catch (seedErr) {
+        console.error('[NWallet] Aviso: Falha ao inicializar com seed:', seedErr.message);
+      }
+    }
+    if (!seeded) {
+      stored = {revision:0,state:emptyState()};
+    }
   }
   let writes = Promise.resolve();
   async function save(payload) {
@@ -93,6 +135,22 @@ async function createServer() {
           return json(res,200,await save(await readBody(req)));
         }
         res.setHeader('Allow','GET, PUT'); return json(res,405,{error:'Método não permitido.'});
+      }
+      if (url.pathname==='/api/wallet/reload-seed' && req.method==='POST') {
+        const origin = req.headers.origin;
+        if (origin && new URL(origin).host!==req.headers.host) return json(res,403,{error:'Origem não permitida.'});
+        if (!fs.existsSync(SEED_FILE)) return json(res,404,{error:'Arquivo seed-wallet.json não encontrado.'});
+        try {
+          const seed = JSON.parse(await fsp.readFile(SEED_FILE,'utf8'));
+          validateLedger(seed.state);
+          await fsp.copyFile(DATA_FILE, path.join(DATA_DIR, 'wallet.backup-pre-reload.json')).catch(()=>{});
+          const next = { revision: stored.revision + 1, state: seed.state };
+          await fsp.writeFile(DATA_FILE, JSON.stringify(next, null, 2), 'utf8');
+          stored = next;
+          return json(res,200,{ status: 'ok', revision: stored.revision, message: 'Dados recarregados do seed com sucesso!' });
+        } catch (e) {
+          return json(res,500,{ error: `Falha ao recarregar seed: ${e.message}` });
+        }
       }
       if (url.pathname==='/api/chat' && req.method==='POST') {
         const body = JSON.stringify(await readBody(req));

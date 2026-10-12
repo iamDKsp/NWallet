@@ -15,6 +15,7 @@ COPY notifications.cjs ./
 COPY public/ ./public/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
+COPY seed-wallet.json ./
 RUN mkdir -p /app/data && chown -R node:node /app/data
 
 # Instalação segura de dependências
