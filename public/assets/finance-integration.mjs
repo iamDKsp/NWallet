@@ -4,6 +4,8 @@ import {createNotificationUI} from './notifications-ui.mjs';
 import {payableReminders} from '../reminders.mjs';
 import {cardBank,linkCardAccount,upsertAccount} from '../finance.mjs';
 import {birthdaysOf,nextBirthdayOccurrence,birthdayAlerts,birthdayCalendarAppointments,DEFAULT_NOTIFY_DAYS} from '../birthdays.mjs';
+import {buildCalendarItems} from '../agenda.mjs';
+import {createCalendarUI} from './calendar-ui.mjs';
 
 export function walletErrorMessage(err) {
   if(err instanceof TypeError && /fetch|network|load failed/i.test(err.message))return 'Não foi possível conectar ao servidor local. Verifique se o NWallet está iniciado e tente novamente.';
@@ -11,8 +13,11 @@ export function walletErrorMessage(err) {
 }
 
 // Shared by the original dashboard, entry sheets and Wallet screen.
-export function createFinanceIntegration(React,motion,Presence) {
+export function createFinanceIntegration(React,motion,Presence,createPortal) {
   const h=React.createElement;
+  let pendingWorkspaceTab;
+  const selectWorkspaceSection=view=>{pendingWorkspaceTab=view;};
+  const {Calendar}=createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,selectWorkspaceSection,createPortal});
   const {NotificationCenter,NotificationModal}=createNotificationUI(React,{useWallet,Modal,Presence});
   let snapshot={state:emptyState(),revision:0,loaded:false,saving:false,error:''},boot;
   const listeners=new Set();
@@ -82,11 +87,14 @@ export function createFinanceIntegration(React,motion,Presence) {
     for(let offset=-1;offset<=1;offset++){
       const date=new Date(baseDate||today()+'T12:00:00');date.setDate(1);date.setMonth(date.getMonth()+offset);
       const month=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
-      for(const item of obligations(s,month).filter(i=>!i.paid&&!i.viaPayroll))appointments.push({id:item.key,title:item.name,date:item.date,time:'09:00',description:item.amountCents?`${money(item.amountCents)} · ${item.type==='income'?'a receber':'a pagar'}`:'Valor a informar neste mês'});
+      for(const item of obligations(s,month).filter(i=>!i.paid&&!i.viaPayroll))appointments.push({id:item.key,title:item.name,date:item.date,isoDate:item.date,time:'',type:'obligation',amountCents:item.amountCents,financialDirection:item.type,section:item.kind==='payroll'?'payroll':'commitments',description:item.amountCents?item.type==='income'?'Recebimento previsto':'Pagamento previsto':'Valor a informar neste mês'});
     }
-    for(const invoice of invoices(s).filter(i=>i.remainingCents>0))appointments.push({id:invoice.key,title:`Fatura ${invoice.name}`,date:invoice.date,time:'09:00',description:money(invoice.remainingCents)});
-    for(const bday of birthdayCalendarAppointments(s,baseDate))appointments.push(bday);
+    for(const invoice of invoices(s).filter(i=>i.remainingCents>0))appointments.push({id:invoice.key,title:`Fatura ${invoice.name}`,date:invoice.date,isoDate:invoice.date,time:'',type:'invoice',amountCents:invoice.remainingCents,financialDirection:'expense',section:'accounts',description:'Fatura em aberto'});
+    for(const bday of birthdayCalendarAppointments(s,baseDate))appointments.push({...bday,section:'birthdays'});
     return appointments.map(a=>({...a,date:a.date instanceof Date?a.date:new Date(a.date+'T12:00:00')}));
+  }
+  function calendarItems(s,start,end,baseDate) {
+    return buildCalendarItems(s,start,end,calendarAppointments(s,new Date(baseDate+'T12:00:00')));
   }
   function statisticsRows(s) {
     const categories={'Alimentação':'Alimentação','Transporte':'Transporte','Educação':'Educação','Lazer':'Entretenimento'};
@@ -110,7 +118,7 @@ export function createFinanceIntegration(React,motion,Presence) {
   const btn=(label,fn,kind='',ico)=>h('button',{type:'button',className:'nf-button '+kind,onClick:fn},ico&&icon(ico),label);
   const muted=text=>h('p',{className:'nf-muted'},text);
   const badge=(text,kind='')=>h('span',{className:'nf-badge '+kind},text);
-  const empty=(title,text)=>h('div',{className:'nf-empty'},icon('wallet'),h('strong',{},title),muted(text));
+  const empty=(title,text,ico='wallet',action=null)=>h('div',{className:'nf-empty'},icon(ico),h('strong',{},title),muted(text),action);
   const metric=(label,value,kind='')=>h('div',{className:'nf-metric '+kind},h('span',{},label),h('strong',{},typeof value==='number'?money(value):value));
   const section=(title,subtitle,body,action)=>h('section',{className:'nf-panel'},h('div',{className:'nf-section-head'},h('div',{},h('h2',{},title),subtitle&&muted(subtitle)),action),body);
   const row=(title,detail,value,action,tag)=>h('div',{className:'nf-row'},h('div',{className:'nf-row-main'},h('strong',{},title),detail&&muted(detail),tag),h('div',{className:'nf-row-end'},value!==undefined&&h('strong',{},typeof value==='number'?money(value):value),action));
@@ -221,50 +229,53 @@ export function createFinanceIntegration(React,motion,Presence) {
       const enriched=list.map(b=>({...b,occ:nextBirthdayOccurrence(b,today())})).sort((a,b)=>a.occ.daysRemaining-b.occ.daysRemaining||a.name.localeCompare(b.name));
       const thisMonthCount=enriched.filter(b=>b.occ.nextDate.startsWith(monthNow())).length;
       const nextUp=enriched[0];
-      return section('Agendamentos & Aniversários 🎂','Cadastre aniversários para receber lembretes no iPhone com 1 mês, 1 semana, 3 dias de antecedência e no dia.',
-        h('div',{className:'nf-metrics'},
-          metric('Total de aniversários',list.length),
-          metric('Neste mês',thisMonthCount),
-          metric('Próximo',nextUp?`${nextUp.name} (${nextUp.occ.daysRemaining===0?'Hoje!':nextUp.occ.daysRemaining===1?'Amanhã':`${nextUp.occ.daysRemaining} dias`})`:'Nenhum')
-        ),
-        enriched.length?h('div',{className:'nf-birthday-grid'},
-          enriched.map(b=>{
-            const occ=b.occ;
-            const [y,m,d]=occ.nextDate.split('-');
-            const dateFmt=`${d}/${m}`;
-            const msg=`Parabéns ${b.name}! Feliz aniversário! 🎉🎂 Muita saúde, paz e realizações!`;
-            const waUrl=b.phone?`https://wa.me/55${b.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`:`https://wa.me/?text=${encodeURIComponent(msg)}`;
-            return h('article',{key:b.id,className:'nf-birthday-card'+(occ.isToday?' nf-birthday-today':'')},
-              h('div',{className:'nf-birthday-header'},
-                b.photo?h('img',{src:b.photo,alt:b.name,className:'nf-birthday-avatar'}):h('div',{className:'nf-birthday-avatar-fallback'},b.name.slice(0,2).toUpperCase()),
-                h('div',{className:'nf-birthday-title'},
-                  h('h3',{},b.name),
-                  b.relationship&&h('span',{className:'nf-badge'},b.relationship),
-                  h('p',{className:'nf-muted'},`Aniversário: ${dateFmt}${b.hasYear!==false&&b.date?` · ${b.date.slice(0,4)}`:''}`)
+      return section('Agendamentos & Aniversários','Cadastre aniversários para receber lembretes no iPhone com 1 mês, 1 semana, 3 dias de antecedência e no dia.',
+        h(React.Fragment,{},
+          h('div',{className:'nf-metrics'},
+            metric('Total de aniversários',String(list.length)),
+            metric('Neste mês',String(thisMonthCount)),
+            metric('Próximo',nextUp?`${nextUp.name} (${nextUp.occ.daysRemaining===0?'Hoje!':nextUp.occ.daysRemaining===1?'Amanhã':`${nextUp.occ.daysRemaining} dias`})`:'Nenhum')
+          ),
+          enriched.length?h('div',{className:'nf-birthday-grid'},
+            enriched.map(b=>{
+              const occ=b.occ;
+              const [y,m,d]=occ.nextDate.split('-');
+              const dateFmt=`${d}/${m}`;
+              const msg=`Parabéns ${b.name}! Feliz aniversário! 🎉🎂 Muita saúde, paz e realizações!`;
+              const waUrl=b.phone?`https://wa.me/55${b.phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`:`https://wa.me/?text=${encodeURIComponent(msg)}`;
+              return h('article',{key:b.id,className:'nf-birthday-card'+(occ.isToday?' nf-birthday-today':'')},
+                h('div',{className:'nf-birthday-header'},
+                  b.photo?h('img',{src:b.photo,alt:b.name,className:'nf-birthday-avatar'}):h('div',{className:'nf-birthday-avatar-fallback'},b.name.slice(0,2).toUpperCase()),
+                  h('div',{className:'nf-birthday-title'},
+                    h('h3',{},b.name),
+                    b.relationship&&h('span',{className:'nf-badge'},b.relationship),
+                    h('p',{className:'nf-muted'},`Aniversário: ${dateFmt}${b.hasYear!==false&&b.date?` · ${b.date.slice(0,4)}`:''}`)
+                  ),
+                  h('div',{className:'nf-birthday-badge-box'},
+                    occ.isToday?h('span',{className:'nf-badge nf-badge-today'},'🎉 É HOJE!')
+                    :occ.daysRemaining<=3?h('span',{className:'nf-badge nf-late'},`Faltam ${occ.daysRemaining} dias`)
+                    :occ.daysRemaining<=7?h('span',{className:'nf-badge'},'Em 1 semana')
+                    :occ.daysRemaining<=30?h('span',{className:'nf-badge'},`Em ${occ.daysRemaining} dias`)
+                    :h('span',{className:'nf-badge'},`Em ${occ.daysRemaining} dias`)
+                  )
                 ),
-                h('div',{className:'nf-birthday-badge-box'},
-                  occ.isToday?h('span',{className:'nf-badge nf-badge-today'},'🎉 É HOJE!')
-                  :occ.daysRemaining<=3?h('span',{className:'nf-badge nf-late'},`Faltam ${occ.daysRemaining} dias`)
-                  :occ.daysRemaining<=7?h('span',{className:'nf-badge'},'Em 1 semana')
-                  :occ.daysRemaining<=30?h('span',{className:'nf-badge'},`Em ${occ.daysRemaining} dias`)
-                  :h('span',{className:'nf-badge'},`Em ${occ.daysRemaining} dias`)
+                h('div',{className:'nf-birthday-info'},
+                  occ.turningAge?h('p',{className:'nf-birthday-age'},occ.isToday?`🎈 Completa ${occ.turningAge} anos hoje! Parabéns!`:b.hasYear!==false?`Vai completar ${occ.turningAge} anos`:''):null,
+                  b.notes&&h('p',{className:'nf-birthday-notes'},`🎁 ${b.notes}`)
+                ),
+                h('div',{className:'nf-birthday-actions'},
+                  h('a',{href:waUrl,target:'_blank',rel:'noopener noreferrer',className:'nf-button small nf-button-whatsapp'},'💬 Dar Parabéns'),
+                  btn('Editar',()=>open('birthday',{item:b}),'small'),
+                  btn('Excluir',()=>open('delete-birthday',{item:b}),'quiet small')
                 )
-              ),
-              h('div',{className:'nf-birthday-info'},
-                occ.turningAge?h('p',{className:'nf-birthday-age'},occ.isToday?`🎈 Completa ${occ.turningAge} anos hoje! Parabéns!`:b.hasYear!==false?`Vai completar ${occ.turningAge} anos`:''):null,
-                b.notes&&h('p',{className:'nf-birthday-notes'},`🎁 ${b.notes}`)
-              ),
-              h('div',{className:'nf-birthday-actions'},
-                h('a',{href:waUrl,target:'_blank',rel:'noopener noreferrer',className:'nf-button small nf-button-whatsapp'},'💬 Dar Parabéns'),
-                btn('Editar',()=>open('birthday',{item:b}),'small'),
-                btn('Excluir',()=>open('delete-birthday',{item:b}),'quiet small')
-              )
-            );
-          })
-        ):empty('Nenhum aniversário cadastrado','Cadastre seus amigos e familiares para receber lembretes no iPhone com 1 mês, 1 semana, 3 dias e no dia.','birthday','Cadastrar primeiro aniversário'),
-        h('div',{className:'nf-actions'},
-          btn('Novo Aniversário',()=>open('birthday'),'primary','plus')
-        )
+              );
+            })
+          ):empty('Nenhum aniversário cadastrado','Cadastre seus amigos e familiares para receber lembretes no iPhone com 1 mês, 1 semana, 3 dias e no dia.','birthday',h('div',{style:{marginTop:'16px'}},btn('Cadastrar aniversário',()=>open('birthday'),'primary','plus'))),
+          enriched.length?h('div',{className:'nf-actions',style:{marginTop:'16px'}},
+            btn('Novo Aniversário',()=>open('birthday'),'primary','plus')
+          ):null
+        ),
+        btn('Novo Aniversário',()=>open('birthday'),'primary','plus')
       );
     }
     function payrollView() {
@@ -414,5 +425,5 @@ export function createFinanceIntegration(React,motion,Presence) {
       )
     );
   }
-  return {useWallet,Workspace,CardModal,TransactionModal,HomeConnections,NotificationModal,NotificationCenter,reminderCount:s=>payableReminders(s).length,transactions,legacyCards,balance,weeklyData,spentToday,calendarAppointments,currentAppointments:date=>calendarAppointments(snapshot.state,date),calendarTransactions:rows=>rows,statisticsRows,monthWeeks,insight,budget:s=>summary(s,monthNow()).expenseCents+commitmentSummary(s,monthNow()).expenseCents,monthLabel:()=>new Date(today()+'T12:00:00').toLocaleDateString('pt-BR',{month:'long'}),summary:s=>summary(s,monthNow()),money,saveCard,deleteCard};
+  return {useWallet,Workspace,Calendar,calendarItems,CardModal,TransactionModal,HomeConnections,NotificationModal,NotificationCenter,reminderCount:s=>payableReminders(s).length,transactions,legacyCards,balance,weeklyData,spentToday,calendarAppointments,currentAppointments:date=>calendarAppointments(snapshot.state,date),calendarTransactions:rows=>rows,statisticsRows,monthWeeks,insight,budget:s=>summary(s,monthNow()).expenseCents+commitmentSummary(s,monthNow()).expenseCents,monthLabel:()=>new Date(today()+'T12:00:00').toLocaleDateString('pt-BR',{month:'long'}),summary:s=>summary(s,monthNow()),money,saveCard,deleteCard};
 }

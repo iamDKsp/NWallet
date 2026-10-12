@@ -1,3 +1,4 @@
+@import url('./calendar.css');
 /* Financial relationships inside the existing NWallet, using its original palette. */
 .nf-theme{--nf-bg:#05080d;--nf-panel:#0d121d;--nf-line:rgba(255,255,255,.1);--nf-text:#f4f7fb;--nf-muted:#9faaba;--nf-green:#81c784;--nf-red:#f29a9a;color:var(--nf-text);font-family:inherit;line-height:1.5}
 .nf-theme[data-theme=light]{--nf-bg:#edf5ef;--nf-panel:#fff;--nf-line:rgba(12,51,29,.13);--nf-text:#173d27;--nf-muted:#586b60;--nf-green:#287b34;--nf-red:#a23b42}

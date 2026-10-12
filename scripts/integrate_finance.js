@@ -28,7 +28,7 @@ function replaceExact(old,next){const begin=requireAt(old);s=s.slice(0,begin)+ne
 init('[oe,vt]=A.useState(','[]',requireAt('function bie()'));
 init('[_e,Rt]=A.useState(','[]',requireAt('function bie()'));
 init('[bt,Ln]=A.useState(','0',requireAt('function bie()'));
-replaceExact('function bie(){','const nwFinance=createFinanceIntegration(A,se,jt);function bie(){const nw=nwFinance.useWallet();');
+replaceExact('function bie(){','const nwFinance=createFinanceIntegration(A,se,jt,p5.createPortal);function bie(){const nw=nwFinance.useWallet();');
 const sync='A.useEffect(()=>{if(!nw.loaded)return;Rt(nwFinance.transactions(nw.state).map(ue=>({...ue,icon:{Alimentação:Ad,Transporte:mv,Lazer:ld,Compras:Ja,Salário:ag,CLT:ag,Empresa:ag,Transferência:ag,Saúde:pv}[ue.category]||sd})));Ln(nwFinance.balance(nw.state));vt(nwFinance.legacyCards(nw.state));},[nw.state,nw.loaded]);\n';
 const timer=requireAt('pd.useEffect(()=>{const ue=setTimeout(()=>h(!1)',requireAt('function bie()'));
 s=s.slice(0,timer)+sync+s.slice(timer);
@@ -100,6 +100,8 @@ while(true){const match=/b\.jsx\(fie,\s*\{/.exec(s.slice(cursor));if(!match)brea
 // Import preview must never create the former hard-coded example expense.
 cursor=requireAt('function bie()');
 while(true){const match=/onImportComplete:\s*ue\s*=>\s*\{/.exec(s.slice(cursor));if(!match)break;const begin=cursor+match.index,brace=begin+match[0].length-1,end=closing(brace);const next='onImportComplete:ue=>{D(!1);ne("expense");Ks("Conferir comprovante","Revise e preencha os dados antes de salvar a despesa.","info")}';s=s.slice(0,begin)+next+s.slice(end+1);cursor=begin+next.length;}
+
+s=s.replace(/b\.jsx\(fie,\s*\{/g,'b.jsx(nwFinance.Calendar,{onOpenWallet:()=>t("Wallet"),');
 
 s='import {createFinanceIntegration} from "/assets/finance-integration.mjs";\n'+s;
 s=s.replace('b.jsx(die,{isOpen:Z','b.jsx(nwFinance.NotificationModal,{isOpen:Z').replace('const[e,t]=A.useState("Home")','const[e,t]=A.useState(()=>new URLSearchParams(location.search).get("view")==="notifications"?"Wallet":"Home")');

@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 import {emptyState,today} from '../public/finance.mjs';
+import {upsertAppointment} from '../public/agenda.mjs';
 const testRoot=path.resolve('.test-data');
 await fs.mkdir(testRoot,{recursive:true});
 const dataDir=await fs.mkdtemp(path.join(testRoot,'api-'));
@@ -16,11 +17,13 @@ test('API validates, saves, detects conflicting writes, restores on restart and 
   try {
     const blank=await (await fetch(url+'/api/wallet')).json();assert.deepEqual(blank,{revision:0,state:emptyState()});
     const state={...emptyState(),accounts:[{id:'a',name:'Minha conta',bank:'Itaú',scope:'personal',kind:'bank',openingBalanceCents:12345,openingDate:today()}],cards:['Físico','Virtual'].map((name,i)=>({id:`card-${i}`,name,accountId:'a',scope:'personal',closingDay:25,dueDay:5,openingDebtCents:0,openingDueDate:today()}))};
+    upsertAppointment(state,{title:'Reunião persistida',date:today(),time:'14:00',kind:'work',repeat:'weekly'});
     const put=(revision,state,extra={})=>fetch(url+'/api/wallet',{method:'PUT',headers:{'Content-Type':'application/json',...extra},body:JSON.stringify({revision,state})});
     let response=await put(0,state);assert.equal(response.status,200);assert.equal((await response.json()).revision,1);
     response=await put(0,emptyState());assert.equal(response.status,409);
     response=await put(1,{...state,accounts:[{...state.accounts[0],openingBalanceCents:1.1}]});assert.equal(response.status,422);
     response=await put(1,{...state,accounts:[]});assert.equal(response.status,422);
+    response=await put(1,{...state,appointments:[{...state.appointments[0],time:'25:00'}]});assert.equal(response.status,422);
     response=await put(1,state,{Origin:'https://other.example'});assert.equal(response.status,403);
     response=await put(1,state);assert.equal(response.status,200);
     assert.equal(JSON.parse(await fs.readFile(path.join(dataDir,'wallet.previous.json'),'utf8')).revision,1);
