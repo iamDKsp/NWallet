@@ -11,11 +11,12 @@ ENV PORT=3950
 # Copiar arquivos do projeto
 COPY package*.json ./
 COPY server.js ./
+COPY notifications.cjs ./
 COPY public/ ./public/
 RUN mkdir -p /app/data && chown node:node /app/data
 
 # Instalação segura de dependências
-RUN npm install --omit=dev --ignore-scripts || true
+RUN npm ci --omit=dev --ignore-scripts
 
 # Expor a porta
 EXPOSE 3950

@@ -1,5 +1,7 @@
 # Meu financeiro · primeira etapa
 
+> Referência do experimento anterior. O fluxo atual está na interface original, em **Carteira**. Veja [CARTEIRA.md](CARTEIRA.md) para os cadastros de folha, consignado, empresa e compromissos.
+
 O objetivo desta etapa é registrar a situação inicial e acompanhar cada entrada, gasto e compromisso de uma única pessoa, com contexto pessoal e empresarial. A interface usa módulos JavaScript editáveis, sem dependências ou compilação. A tela principal que recebeu alterações simultâneas continua disponível em `/`; esta etapa está em `/financeiro.html`.
 
 ## Começar

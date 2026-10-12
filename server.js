@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const {createNotificationService}=require('./notifications.cjs');
 const PORT = Number(process.env.PORT || 3950);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data'));
@@ -54,10 +55,35 @@ async function createServer() {
     writes = job.catch(()=>{});
     return job;
   }
-  return http.createServer(async(req,res)=> {
+  const notifications=await createNotificationService({dataDir:DATA_DIR,readWallet:()=>stored.state});
+  const server=http.createServer(async(req,res)=> {
     try {
       const url = new URL(req.url,'http://localhost');
       if (url.pathname==='/health') return json(res,200,{status:'ok'});
+      if(await notifications.handle(req,res,url,readBody,json))return;
+      if (url.pathname==='/api/profile') {
+        const PROFILE_FILE = path.join(DATA_DIR,'profile.json');
+        if (req.method==='GET') {
+          try {
+            const data = await fsp.readFile(PROFILE_FILE,'utf8');
+            return json(res,200,JSON.parse(data));
+          } catch {
+            return json(res,200,{});
+          }
+        }
+        if (req.method==='PUT'||req.method==='POST') {
+          const origin = req.headers.origin;
+          if (origin && new URL(origin).host!==req.headers.host) return json(res,403,{error:'Origem não permitida.'});
+          if (!req.headers['content-type']?.startsWith('application/json')) return json(res,415,{error:'Envie os dados como JSON.'});
+          const body = await readBody(req);
+          await fsp.mkdir(DATA_DIR,{recursive:true});
+          const temp = path.join(DATA_DIR,'profile.tmp');
+          await fsp.writeFile(temp,JSON.stringify(body,null,2),'utf8');
+          await fsp.rename(temp,PROFILE_FILE);
+          return json(res,200,body);
+        }
+        res.setHeader('Allow','GET, POST, PUT'); return json(res,405,{error:'Método não permitido.'});
+      }
       if (url.pathname==='/api/wallet') {
         if (req.method==='GET') return json(res,200,stored);
         if (req.method==='PUT') {
@@ -89,6 +115,11 @@ async function createServer() {
       fs.createReadStream(file).pipe(res);
     } catch (err) { if (!res.headersSent) json(res,err.status||500,{error:err.status?err.message:'Não foi possível salvar ou carregar os dados. Tente novamente.'}); }
   });
+  const notificationTimer=setInterval(()=>notifications.tick().catch(()=>console.error('Não foi possível atualizar os lembretes.')),60000);
+  notificationTimer.unref();
+  server.on('listening',()=>notifications.tick().catch(()=>console.error('Não foi possível atualizar os lembretes.')));
+  server.on('close',()=>clearInterval(notificationTimer));
+  return server;
 }
 if (require.main===module) createServer().then(server=>server.listen(PORT,()=>console.log(`NWallet: http://localhost:${PORT}`))).catch(err=>{console.error(err.message);process.exitCode=1;});
 module.exports = {createServer};

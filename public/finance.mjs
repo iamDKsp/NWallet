@@ -206,7 +206,7 @@ function validatePlans(s) {
       if(d.debtId){assert(p.debts.some(x=>x.id===d.debtId&&x.payrollId===pay.id)&&!linked.has(d.debtId),'Consignado inválido ou repetido na folha.');linked.add(d.debtId);}
     }
     assert(run.baseCents-deductionCents===run.netCents,'Os descontos não correspondem ao salário líquido.');
-    assert(e&&e.type==='income'&&e.source==='clt'&&e.status==='posted'&&e.amountCents===run.netCents&&e.accountId===pay.accountId&&e.date===run.date,'O salário líquido deve estar vinculado ao recebimento da folha.');
+    assert(e&&e.type==='income'&&e.source==='clt'&&e.status==='posted'&&e.amountCents===run.netCents&&e.accountId===(run.accountId||pay.accountId)&&e.date===run.date,'O salário líquido deve estar vinculado ao recebimento da folha.');
   }
   const occurrences=new Set();
   for(const e of s.entries){

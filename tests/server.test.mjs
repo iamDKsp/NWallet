@@ -27,6 +27,25 @@ test('API validates, saves, detects conflicting writes, restores on restart and 
     await stop(server);server=await createServer();url=await listen(server);
     const stored=await (await fetch(url+'/api/wallet')).json();assert.equal(stored.revision,3);assert.deepEqual(stored.state,state);
     assert.equal((await fetch(url+'/data/wallet.json')).status,404);
+    // Test profile API
+    const emptyProfile = await (await fetch(url+'/api/profile')).json();
+    assert.deepEqual(emptyProfile, {});
+    const profileRes = await fetch(url+'/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Tarcisio', email: 'test@example.com', avatar: 'data:image/jpeg;base64,abc' })
+    });
+    assert.equal(profileRes.status, 200);
+    const savedProfile = await profileRes.json();
+    assert.equal(savedProfile.name, 'Tarcisio');
+    const crossOrigin = await fetch(url+'/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'https://evil.com' },
+      body: JSON.stringify({ name: 'Hacked' })
+    });
+    assert.equal(crossOrigin.status, 403);
+    const reloadedProfile = await (await fetch(url+'/api/profile')).json();
+    assert.equal(reloadedProfile.avatar, 'data:image/jpeg;base64,abc');
     assert.equal((await fetch(url+'/%2e%2e%2fserver.js')).status,403);
     assert.equal((await fetch(url+'/finance.mjs')).headers.get('content-type'),'text/javascript; charset=utf-8');
     assert.equal((await fetch(url+'/prototipo.html')).status,200);

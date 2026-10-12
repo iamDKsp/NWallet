@@ -24,7 +24,8 @@
     user-select: auto !important;
     -webkit-user-select: auto !important;
     background-color: #05080d !important;
-    scrollbar-width: thin !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
 
   #root {
@@ -77,30 +78,18 @@
     scroll-behavior: smooth !important;
     -webkit-overflow-scrolling: touch !important;
     overscroll-behavior-y: contain !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: rgba(255, 255, 255, 0.22) rgba(5, 8, 13, 0.6) !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
 
-  /* Custom visible sleek scrollbar for desktop */
+  /* Universal invisible scrollbar for desktop: fully scrollable with no visible bar */
   .desktop-main-viewport::-webkit-scrollbar,
-  .desktop-shell *::-webkit-scrollbar {
-    width: 10px !important;
-    height: 10px !important;
-    display: block !important;
-  }
-  .desktop-main-viewport::-webkit-scrollbar-track,
-  .desktop-shell *::-webkit-scrollbar-track {
-    background: rgba(5, 8, 13, 0.6) !important;
-  }
-  .desktop-main-viewport::-webkit-scrollbar-thumb,
-  .desktop-shell *::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.22) !important;
-    border-radius: 8px !important;
-    border: 2px solid rgba(5, 8, 13, 0.6) !important;
-  }
-  .desktop-main-viewport::-webkit-scrollbar-thumb:hover,
-  .desktop-shell *::-webkit-scrollbar-thumb:hover {
-    background: rgba(82, 183, 83, 0.6) !important;
+  .desktop-shell *::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+    background: transparent !important;
   }
 
   /* On desktop, disable inner overflow-y-auto so the main viewport scrolls smoothly without nested scroll traps */

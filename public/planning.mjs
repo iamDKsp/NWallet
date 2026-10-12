@@ -12,7 +12,7 @@ export function debtSchedule(s,debt) {
   });
 }
 export function payrollPreview(s,payroll,month,baseCents=payroll.baseCents) {
-  const deductions=payroll.deductions.filter(d=>d.active&&inPeriod(month,d.startMonth,d.endMonth)).map(d=>({name:d.name,kind:d.kind,amountCents:d.mode==='fixed'?d.amountCents:Math.round(baseCents*d.rateBps/10000)})).filter(d=>d.amountCents>0);
+  const deductions=payroll.deductions.filter(d=>d.active&&inPeriod(month,d.startMonth,d.endMonth)).map(d=>({name:d.name,kind:d.kind,amountCents:d.mode==='fixed'?d.amountCents:Number((BigInt(baseCents)*BigInt(d.rateBps)+5000n)/10000n)})).filter(d=>d.amountCents>0);
   for(const debt of plansOf(s).debts.filter(d=>d.kind==='payroll_loan'&&d.payrollId===payroll.id)){
     const installment=debtSchedule(s,debt).find(i=>i.month===month);
     if(installment)deductions.push({name:debt.name,kind:'payroll_loan',debtId:debt.id,amountCents:debt.installmentCents});
@@ -25,11 +25,13 @@ export function receivePayroll(s,payrollId,month,date,baseCents) {
   if(!pay)throw new Error('Folha não encontrada.');
   if(p.payrollRuns.some(r=>r.payrollId===payrollId&&r.month===month))throw new Error('Este salário já foi recebido nesta competência.');
   if(!inPeriod(month,pay.startMonth))throw new Error('A competência é anterior ao início da folha.');
-  const preview=payrollPreview(s,pay,month,baseCents||pay.baseCents);
+  const actualBase=baseCents??pay.baseCents;
+  if(!Number.isSafeInteger(actualBase)||actualBase<=0)throw new Error('Informe um salário positivo para confirmar este recebimento.');
+  const preview=payrollPreview(s,pay,month,actualBase);
   if(preview.netCents<=0)throw new Error('Os descontos precisam ser menores que o salário informado. Confira a folha.');
   const entryId=uid(),runId=uid();
-  s.entries.push({id:entryId,type:'income',description:`Salário · ${pay.name} · ${month}`,amountCents:preview.netCents,date,status:'posted',accountId:pay.accountId,paymentMethod:'transfer',source:'clt',payrollRunId:runId,occurrenceKey:`payroll:${pay.id}:${month}`});
-  p.payrollRuns.push({id:runId,payrollId,month,date,baseCents:preview.baseCents,netCents:preview.netCents,deductions:preview.deductions,entryId});
+  s.entries.push({id:entryId,type:'income',description:`Salário · ${pay.name.slice(0,120)} · ${month}`,amountCents:preview.netCents,date,status:'posted',accountId:pay.accountId,paymentMethod:'transfer',source:'clt',payrollRunId:runId,occurrenceKey:`payroll:${pay.id}:${month}`});
+  p.payrollRuns.push({id:runId,payrollId,accountId:pay.accountId,month,date,baseCents:preview.baseCents,netCents:preview.netCents,deductions:preview.deductions,entryId});
 }
 export function obligations(s,month) {
   const p=plansOf(s),list=[];
