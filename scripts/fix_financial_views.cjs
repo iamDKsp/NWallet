@@ -4,6 +4,12 @@ const fs=require('node:fs');
 const file='public/assets/index-DGDPhK2a.js';
 let source=fs.readFileSync(file,'utf8');
 if(!source.includes('const nwFinance=createFinanceIntegration'))throw Error('Apply financial integration first.');
+// Reuse the original animated bars, waves, donut and activity rows in the
+// editable statistics module. Keep this wiring when the bundle is regenerated.
+const originalFactory='createFinanceIntegration(A,se,jt,p5.createPortal)';
+const restoredFactory='createFinanceIntegration(A,se,jt,p5.createPortal,{Bar:mne,Backdrop:pne,ResponsiveContainer:zq,PieChart:hne,Pie:w3,Cell:hm,Tooltip:uQ,ActivityRow:gne,ActivityIcon:sd})';
+if(source.includes(originalFactory))source=source.replace(originalFactory,restoredFactory);
+if(!source.includes(restoredFactory))throw Error('Unexpected statistics visual integration.');
 if(source.includes('b.jsx(yne,')) {
   const next=source.replace(/b\.jsx\(yne,\s*\{\s*onBack:\s*\(\)\s*=>\s*t\("Home"\),\s*isDarkMode:\s*I\s*\}/g,'b.jsx(nwFinance.Statistics,{onBack:()=>t("Home"),onOpenWallet:()=>t("Wallet"),isDarkMode:I}');
   if(next===source||next.includes('b.jsx(yne,'))throw Error('Unexpected statistics route.');

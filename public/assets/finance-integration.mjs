@@ -21,7 +21,7 @@ export function workspaceSection(search,requested) {
 }
 
 // Shared by the original dashboard, entry sheets and Wallet screen.
-export function createFinanceIntegration(React,motion,Presence,createPortal) {
+export function createFinanceIntegration(React,motion,Presence,createPortal,visuals={}) {
   const h=React.createElement;
   let pendingWorkspaceTab;
   let pendingDebtId;
@@ -35,7 +35,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
   const selectWorkspaceSection=view=>{pendingWorkspaceTab=view;};
   const {Calendar}=createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,selectWorkspaceSection,createPortal});
   const {CategorySpending}=createCategorySpendingUI(React,{useWallet});
-  const {Statistics}=createStatisticsUI(React,{useWallet,useSelectedMonth,selectWorkspaceSection,Modal,createPortal});
+  const {Statistics}=createStatisticsUI(React,{useWallet,useSelectedMonth,selectWorkspaceSection,Modal,createPortal,motion,visuals});
   const {NotificationCenter,NotificationModal}=createNotificationUI(React,{useWallet,Modal,Presence});
   let snapshot={state:emptyState(),revision:0,loaded:false,saving:false,error:''},boot;
   const listeners=new Set();

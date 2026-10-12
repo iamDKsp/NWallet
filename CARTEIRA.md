@@ -106,3 +106,8 @@ Acesse **Carteira → Aniversários** ou o atalho na Visão Geral. Cadastre amig
 - `npm test` usa somente dados isolados em `.test-data/`.
 
 O antigo experimento em `/financeiro.html` não é a interface principal. A Carteira original é o fluxo atual.
+### Visual original das Estatísticas
+
+O resumo reutiliza as barras animadas, as ondas decorativas, o gráfico circular interativo e as linhas de despesas do visual original. As alturas e as fatias vêm dos registros confirmados do período escolhido (semana, mês ou ano), sem valores demonstrativos. A previsão inclui faturas e compromissos; a barra de pagamentos representa o percentual efetivamente pago.
+
+A atividade mantém busca por descrição ou valor, filtros de datas, faixa de valores e método de pagamento, paginação e alteração de categoria das despesas. A aba **Cartões e faturas** permanece disponível. A preparação da interface no deploy preserva a conexão com os componentes originais, sem alterar o visual do Início.

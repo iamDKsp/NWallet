@@ -24,9 +24,11 @@ test('statistics renders real series, keeps invoice payment separate and opens t
   const date=today(),state={...emptyState(),entries:[{id:'expense',description:'Mercado',type:'expense',amountCents:12345,date,status:'posted',category:'Alimentação'},{id:'payment',type:'card_payment',amountCents:10000,date,status:'posted'}]};
   let section,opened=false;
   const {Statistics}=createStatisticsUI(React,{useWallet:()=>({state,loaded:true}),useSelectedMonth:()=>[date.slice(0,7),()=>{}],selectWorkspaceSection:value=>section=value});
-  const tree=Statistics({onOpenWallet:()=>opened=true});assert.match(text(tree),/123,45/);assert.match(text(tree),/223,45/);
+  const parent=Statistics({onOpenWallet:()=>opened=true});let overview;
+  visit(parent,n=>{if(typeof n.type==='function'&&n.type.name==='StatisticsOverview')overview=n;});
+  const tree=overview.type(overview.props);assert.match(text(tree),/123,45/);assert.match(text(tree),/223,45/);
   let button;visit(tree,n=>{if(n.type==='button'&&text(n)==='Ver registros')button=n;});button.props.onClick();
   assert.equal(section,'history');assert.equal(opened,true);
-  const chart=[];visit(tree,n=>{if(n.props.className==='nf-stat-bucket')chart.push(n);});assert.ok(chart.length>0);
+  const chart=[];visit(tree,n=>{if(n.props.className==='st-bucket')chart.push(n);});assert.ok(chart.length>0);
   assert.doesNotMatch(text(tree),/Nenhuma movimentação confirmada/);
 });
