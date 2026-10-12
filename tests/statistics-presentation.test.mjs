@@ -50,10 +50,12 @@ test('overview reuses original bar, donut and activity components with real amou
 
 test('deploy integration retains original statistics visual wiring on repeated builds',async()=>{
   let source=await fs.readFile('public/assets/index-DGDPhK2a.js','utf8');
-  source=source.replace('createFinanceIntegration(A,se,jt,p5.createPortal,{Bar:mne,Backdrop:pne,ResponsiveContainer:zq,PieChart:hne,Pie:w3,Cell:hm,Tooltip:uQ,ActivityRow:gne,ActivityIcon:sd})','createFinanceIntegration(A,se,jt,p5.createPortal)');
+  source=source.replace(/createFinanceIntegration\(A,se,jt,p5\.createPortal,\{Bar:mne[^}]+\}\)/,'createFinanceIntegration(A,se,jt,p5.createPortal)');
+  source=source.replace('tiltX:y,tiltY:x,readOnly:ro=!1})=>','tiltX:y,tiltY:x})=>').replace('children:[!ro&&b.jsxs("div",{className:"absolute inset-0 pointer-events-none rounded-[32px] overflow-hidden"','children:[b.jsxs("div",{className:"absolute inset-0 pointer-events-none rounded-[32px] overflow-hidden"').replace('drag:ro?!1:"x",dragConstraints','drag:"x",dragConstraints');
   const script=await fs.readFile('scripts/fix_financial_views.cjs','utf8');
   const run=()=>vm.runInNewContext(script,{require:name=>{assert.equal(name,'node:fs');return {readFileSync:()=>source,writeFileSync:(_,value)=>source=value};},console:{log:()=>{}}});
   run();const first=source;run();assert.equal(source,first);
   assert.match(source,/createFinanceIntegration\(A,se,jt,p5.createPortal,\{Bar:mne,Backdrop:pne/);
   assert.equal(source.match(/b\.jsx\(nwFinance\.Statistics,/g).length,2);
+  assert.match(source,/ActivityIcon:sd,Card:gie/);assert.match(source,/readOnly:ro=!1/);assert.match(source,/drag:ro\?!1:"x"/);
 });

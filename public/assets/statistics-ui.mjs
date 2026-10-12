@@ -6,7 +6,7 @@ import {createStatisticsOverview} from './statistics-overview.mjs';
 
 export function createStatisticsUI(React,{useWallet,useSelectedMonth,selectWorkspaceSection,Modal,createPortal,motion,visuals}) {
   const h=React.createElement;
-  const {CardsStatistics}=createCardsStatisticsUI(React);
+  const {CardsStatistics}=createCardsStatisticsUI(React,{motion,visuals});
   const {StatisticsOverview}=createStatisticsOverview(React,{motion,visuals});
   function Statistics({isDarkMode=true,onBack,onOpenWallet}) {
     const nw=useWallet(),[month,setMonth]=useSelectedMonth(),[period,setPeriod]=React.useState('month'),[view,setView]=React.useState('overview'),[editingLimit,setEditingLimit]=React.useState(null),[notice,setNotice]=React.useState('');

@@ -106,8 +106,17 @@ Acesse **Carteira → Aniversários** ou o atalho na Visão Geral. Cadastre amig
 - `npm test` usa somente dados isolados em `.test-data/`.
 
 O antigo experimento em `/financeiro.html` não é a interface principal. A Carteira original é o fluxo atual.
+
 ### Visual original das Estatísticas
 
 O resumo reutiliza as barras animadas, as ondas decorativas, o gráfico circular interativo e as linhas de despesas do visual original. As alturas e as fatias vêm dos registros confirmados do período escolhido (semana, mês ou ano), sem valores demonstrativos. A previsão inclui faturas e compromissos; a barra de pagamentos representa o percentual efetivamente pago.
 
 A atividade mantém busca por descrição ou valor, filtros de datas, faixa de valores e método de pagamento, paginação e alteração de categoria das despesas. A aba **Cartões e faturas** permanece disponível. A preparação da interface no deploy preserva a conexão com os componentes originais, sem alterar o visual do Início.
+
+### Seleção de cartão e extrato
+
+Em **Cartões e faturas**, os cartões reutilizam a aparência e a inclinação do Início. Um clique ou Enter/Espaço abre os limites e o extrato do cartão; outro clique recolhe. Nessa seleção, as faturas e a projeção de seis meses também ficam filtradas para o cartão escolhido. As ações de arrastar para editar/excluir continuam no Início e ficam desabilitadas nesta seleção.
+
+O extrato mostra todo o histórico cadastrado para o cartão, com busca, tipo de registro, datas e paginação. Cada compra confirmada aparece uma vez pelo valor total; suas parcelas e vencimentos ficam nos detalhes. Os pagamentos são registros separados. Os saldos e as parcelas anteriores aparecem com seu vencimento, sem inventar a data da compra, sua categoria ou sua composição. Os registros confirmados recentes vêm primeiro, seguidos dos saldos anteriores futuros em ordem de vencimento. Os totais do cabeçalho representam todo o histórico cadastrado, enquanto os filtros afetam a lista.
+
+Os atalhos **CLT e folha**, **Minha empresa** e **Aniversários** do Início abrem diretamente **CLT e folha**, **Empresa** e **Aniversários** na Carteira. **Minha agenda** continua levando ao calendário da tela inicial.

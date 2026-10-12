@@ -7,9 +7,24 @@ if(!source.includes('const nwFinance=createFinanceIntegration'))throw Error('App
 // Reuse the original animated bars, waves, donut and activity rows in the
 // editable statistics module. Keep this wiring when the bundle is regenerated.
 const originalFactory='createFinanceIntegration(A,se,jt,p5.createPortal)';
-const restoredFactory='createFinanceIntegration(A,se,jt,p5.createPortal,{Bar:mne,Backdrop:pne,ResponsiveContainer:zq,PieChart:hne,Pie:w3,Cell:hm,Tooltip:uQ,ActivityRow:gne,ActivityIcon:sd})';
+const previousFactory='createFinanceIntegration(A,se,jt,p5.createPortal,{Bar:mne,Backdrop:pne,ResponsiveContainer:zq,PieChart:hne,Pie:w3,Cell:hm,Tooltip:uQ,ActivityRow:gne,ActivityIcon:sd})';
+const restoredFactory='createFinanceIntegration(A,se,jt,p5.createPortal,{Bar:mne,Backdrop:pne,ResponsiveContainer:zq,PieChart:hne,Pie:w3,Cell:hm,Tooltip:uQ,ActivityRow:gne,ActivityIcon:sd,Card:gie})';
 if(source.includes(originalFactory))source=source.replace(originalFactory,restoredFactory);
+if(source.includes(previousFactory))source=source.replace(previousFactory,restoredFactory);
 if(!source.includes(restoredFactory))throw Error('Unexpected statistics visual integration.');
+// The same physical card face can be used as a read-only selector. Home keeps
+// its swipe actions; statistics disables those actions and uses click to expand.
+const cardStart=source.indexOf('gie=({'),cardEnd=source.indexOf('yie=',cardStart);
+if(cardStart<0||cardEnd<0)throw Error('Missing original card visual.');
+let card=source.slice(cardStart,cardEnd);
+if(!card.includes('readOnly:ro=!1')) {
+  for(const [before,after] of [
+    ['tiltX:y,tiltY:x})=>','tiltX:y,tiltY:x,readOnly:ro=!1})=>'],
+    ['children:[b.jsxs("div",{className:"absolute inset-0 pointer-events-none rounded-[32px] overflow-hidden"','children:[!ro&&b.jsxs("div",{className:"absolute inset-0 pointer-events-none rounded-[32px] overflow-hidden"'],
+    ['drag:"x",dragConstraints','drag:ro?!1:"x",dragConstraints']
+  ]){if(!card.includes(before))throw Error('Unexpected original card structure.');card=card.replace(before,after);}
+  source=source.slice(0,cardStart)+card+source.slice(cardEnd);
+}
 if(source.includes('b.jsx(yne,')) {
   const next=source.replace(/b\.jsx\(yne,\s*\{\s*onBack:\s*\(\)\s*=>\s*t\("Home"\),\s*isDarkMode:\s*I\s*\}/g,'b.jsx(nwFinance.Statistics,{onBack:()=>t("Home"),onOpenWallet:()=>t("Wallet"),isDarkMode:I}');
   if(next===source||next.includes('b.jsx(yne,'))throw Error('Unexpected statistics route.');
