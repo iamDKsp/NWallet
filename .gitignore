@@ -1,5 +1,6 @@
 node_modules/
-data/
+data/*
+!data/wallet.json
 .test-data/
 .env
 .env.local

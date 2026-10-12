@@ -1,5 +1,8 @@
 node_modules
-data
+data/*.tmp
+data/*.log
+data/wallet.previous.json
+data/wallet.pre-nwfinance.json
 .test-data
 tests
 npm-debug.log*

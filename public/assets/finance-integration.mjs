@@ -1,4 +1,4 @@
-import {emptyState,validateLedger,uid,cents,inputMoney,money,today,accountBalance,entryScope,summary,invoices,plansOf,ensurePlans,CATEGORIES,SCOPES,METHODS,SOURCES} from '../finance.mjs';
+import {emptyState,validateLedger,uid,cents,inputMoney,formatBps,money,today,accountBalance,entryScope,summary,invoices,plansOf,ensurePlans,CATEGORIES,SCOPES,METHODS,SOURCES} from '../finance.mjs';
 import {monthNow,dueDate,obligations,payrollPreview,debtSchedule,receivePayroll,settleObligation,businessSummary,commitmentSummary,removePostedEntry} from '../planning.mjs';
 import {createNotificationUI} from './notifications-ui.mjs';
 import {payableReminders} from '../reminders.mjs';
@@ -7,6 +7,7 @@ import {birthdaysOf,nextBirthdayOccurrence,birthdayAlerts,birthdayCalendarAppoin
 import {buildCalendarItems} from '../agenda.mjs';
 import {createCalendarUI} from './calendar-ui.mjs';
 import {createCategorySpendingUI} from './category-spending.mjs';
+import {presentValue,simulateAmortization,annualRateFromMonthly,debtPriorityRanking} from '../amortization.mjs';
 
 export function walletErrorMessage(err) {
   if(err instanceof TypeError && /fetch|network|load failed/i.test(err.message))return 'Não foi possível conectar ao servidor local. Verifique se o NWallet está iniciado e tente novamente.';
@@ -14,7 +15,7 @@ export function walletErrorMessage(err) {
 }
 export function workspaceSection(search,requested) {
   const view=requested||new URLSearchParams(search).get('view');
-  return ['overview','payroll','business','commitments','accounts','history','birthdays','notifications'].includes(view)?view:'overview';
+  return ['overview','debts','payroll','business','commitments','accounts','history','birthdays','notifications'].includes(view)?view:'overview';
 }
 
 // Shared by the original dashboard, entry sheets and Wallet screen.
@@ -292,11 +293,130 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
         return h('article',{key:pay.id,className:'nf-payroll-card'},h('div',{className:'nf-section-head'},h('div',{},h('h3',{},pay.name),muted(`Dia ${pay.payDay} · ${accountName(s,pay.accountId)}`)),btn('Editar folha',()=>open('payroll',{item:pay}),'small')),h('div',{className:'nf-metrics'},metric('Antes dos descontos',preview.baseCents),metric('Descontos na folha',preview.deductionCents,'out'),metric('Líquido na conta',preview.netCents,'in')),h('div',{className:'nf-deductions'},preview.deductions.length?preview.deductions.map((d,i)=>row(d.name,d.debtId?'Consignado vinculado · baixa junto do salário':d.kind==='pension'?'Pensão descontada na folha':'Desconto da folha',d.amountCents,undefined,badge('Já sai antes do depósito'))):muted('Nenhum desconto cadastrado nesta competência.')),h('div',{className:'nf-actions'},btn('Adicionar desconto',()=>open('deduction',{payrollId:pay.id}),'small','plus'),btn('Vincular consignado',()=>open('debt',{debtKind:'payroll_loan',payrollId:pay.id}),'small','debt'),btn('Pensão na folha',()=>open('deduction',{payrollId:pay.id,initialKind:'pension'}),'small','pension'),run?badge('Salário recebido','success'):month<pay.startMonth?badge('A partir de '+pay.startMonth):btn('Confirmar salário recebido',()=>open('settle',{item:monthItems.find(i=>i.kind==='payroll'&&i.id===pay.id)}),'primary small')),pay.deductions.length>0&&h('details',{},h('summary',{},'Gerenciar descontos'),pay.deductions.map(d=>row(d.name,d.active?'Ativo':'Pausado',d.mode==='percent'?`${inputMoney(d.rateBps)}%`:d.amountCents,h('div',{className:'nf-actions'},btn('Editar',()=>open('deduction',{payrollId:pay.id,item:d}),'quiet'),btn(d.active?'Pausar':'Ativar',()=>persist(state=>{const deduction=ensurePlans(state).payrolls.find(x=>x.id===pay.id).deductions.find(x=>x.id===d.id);deduction.active=!deduction.active;}).catch(err=>setNotice(err.message)),'quiet'))))));
       })):empty('Cadastre seu trabalho CLT','Informe o salário antes dos descontos que você vai cadastrar. Depois vincule consignados, pensão e outros descontos.'),btn('Cadastrar CLT',()=>open('payroll'),'primary','plus'));
     }
-    function debtView(){return section('Consignados, financiamentos e empréstimos','Cadastre somente as parcelas que ainda faltam, com os valores do seu contrato.',p.debts.length?h('div',{className:'nf-stack'},p.debts.map(d=>{const schedule=debtSchedule(s,d),remaining=schedule.filter(i=>!i.paid),paid=schedule.length-remaining.length,pay=p.payrolls.find(p=>p.id===d.payrollId);return h('article',{key:d.id,className:'nf-contract-card'},h('div',{className:'nf-section-head'},h('div',{},h('h3',{},d.name),muted(`${({payroll_loan:'Consignado',financing:'Financiamento',loan:'Empréstimo'})[d.kind]}${pay?` · vinculado a ${pay.name}`:` · ${accountName(s,d.accountId)}`}${d.creditor?` · ${d.creditor}`:''}`)),btn('Editar',()=>open('debt',{item:d}),'small')),h('div',{className:'nf-metrics'},metric('Parcela',d.installmentCents),metric('Faltam',`${remaining.length} parcelas`),metric('Total a pagar',remaining.length*d.installmentCents,'out')),h('div',{className:'nf-progress'},h('span',{style:{width:`${paid/schedule.length*100}%`}})),muted(`${paid} de ${schedule.length} parcelas cadastradas confirmadas${d.kind==='payroll_loan'?' · descontadas ao confirmar o salário':''}`));})):empty('Mapeie suas dívidas','Seu consignado fica ligado à folha. Financiamentos e outros empréstimos saem da conta escolhida.'),btn('Adicionar contrato',()=>open('debt'),'primary','plus'));}
+    function debtView(){return section('Consignados, financiamentos e empréstimos','Cadastre somente as parcelas que ainda faltam, com os valores do seu contrato.',p.debts.length?h('div',{className:'nf-stack'},p.debts.map(d=>{const schedule=debtSchedule(s,d),remaining=schedule.filter(i=>!i.paid),paid=schedule.length-remaining.length,pay=p.payrolls.find(p=>p.id===d.payrollId);return h('article',{key:d.id,className:'nf-contract-card'},h('div',{className:'nf-section-head'},h('div',{},h('h3',{},d.name),muted(`${({payroll_loan:'Consignado',financing:'Financiamento',loan:'Empréstimo'})[d.kind]}${pay?` · vinculado a ${pay.name}`:` · ${accountName(s,d.accountId)}`}${d.creditor?` · ${d.creditor}`:''}`)),h('div',{className:'nf-actions'},d.cetBps?h('span',{className:'nf-badge warning'},`CET ${formatBps(d.cetBps)} a.m.`):d.interestRateBps?h('span',{className:'nf-badge'},`${formatBps(d.interestRateBps)} a.m.`):null,btn('Simular',()=>setTab('debts'),'quiet small'),btn('Editar',()=>open('debt',{item:d}),'small'))),h('div',{className:'nf-metrics'},metric('Parcela',d.installmentCents),metric('Faltam',`${remaining.length} parcelas`),metric('Total a pagar',remaining.length*d.installmentCents,'out')),d.currentBalanceCents?muted(`Saldo p/ quitação informado: ${money(d.currentBalanceCents)}`):null,h('div',{className:'nf-progress'},h('span',{style:{width:`${paid/schedule.length*100}%`}})),muted(`${paid} de ${schedule.length} parcelas cadastradas confirmadas${d.kind==='payroll_loan'?' · descontadas ao confirmar o salário':''}`));})):empty('Mapeie suas dívidas','Seu consignado fica ligado à folha. Financiamentos e outros empréstimos saem da conta escolhida.'),btn('Adicionar contrato',()=>open('debt'),'primary','plus'));}
+    function debtsView() {
+      const debts = p.debts || [];
+      const [selectedDebtId, setSelectedDebtId] = React.useState(debts[0]?.id || '');
+      const [simAmountStr, setSimAmountStr] = React.useState('1000,00');
+
+      const ranking = debtPriorityRanking(debts, s.accounts, s.cards, invoices(s));
+      const totalNominal = debts.reduce((acc, d) => acc + (d.installmentCents * d.installments), 0);
+      const totalBalance = debts.reduce((acc, d) => acc + (d.currentBalanceCents || (d.installmentCents * d.installments)), 0);
+      const monthlyTotal = debts.reduce((acc, d) => acc + d.installmentCents, 0);
+
+      const targetDebt = debts.find(d => d.id === selectedDebtId) || debts[0];
+      let simResult = null;
+      if (targetDebt) {
+        try {
+          const cashCents = simAmountStr ? cents(simAmountStr) : 0;
+          if (cashCents > 0) {
+            simResult = simulateAmortization(targetDebt, cashCents, { asOfMonth: month });
+          }
+        } catch (_) {}
+      }
+
+      return section('Dívidas, Juros & Simulador de Amortização',
+        'Avalie o custo real de cada dívida, simule amortizações com desconto a valor presente (Resolução BACEN 3.516/2007) e priorize quitações.',
+        h(React.Fragment, {},
+          h('div', { className: 'nf-metrics' },
+            metric('Saldo p/ quitação total', totalBalance, 'out'),
+            metric('Total parcelas nominais', totalNominal, 'out'),
+            metric('Custo mensal parcelas', monthlyTotal, 'out')
+          ),
+          section('Ranking Estratégico de Quitação (Método Avalanche)',
+            'Dívidas ordenadas pelo custo financeiro efetivo. Elimine as mais caras primeiro para estancar a perda de juros.',
+            ranking.length ? h('div', { className: 'nf-stack' },
+              ranking.map(item => h('article', { key: item.id, className: 'nf-contract-card' },
+                h('div', { className: 'nf-section-head' },
+                  h('div', {},
+                    h('h3', {}, item.name),
+                    muted(`${item.urgency === 'critical' ? '🚨 URGÊNCIA CRÍTICA' : item.urgency === 'high' ? '⚠️ ALTA PRIORIDADE' : 'ℹ️ MODERADA'} · Taxa: ${item.monthlyRateBps ? formatBps(item.monthlyRateBps) + ' a.m.' : 'N/A'}${item.annualRatePercent ? ` (~${item.annualRatePercent}% a.a.)` : ''}`)
+                  ),
+                  h('div', { className: 'nf-actions' },
+                    h('span', { className: `nf-badge ${item.urgency}` }, item.urgency === 'critical' ? 'Crítica' : item.urgency === 'high' ? 'Alta' : 'Moderada'),
+                    item.type === 'payroll_loan' || item.type === 'financing' || item.type === 'loan'
+                      ? btn('Simular amortização', () => { setSelectedDebtId(item.debt.id); }, 'small')
+                      : null
+                  )
+                ),
+                h('p', { className: 'nf-hint' }, item.reason),
+                h('div', { className: 'nf-metrics' },
+                  metric(item.type === 'overdraft' ? 'Limite utilizado' : item.type === 'card_invoice' ? 'Fatura em aberto' : 'Saldo quitação', item.balanceCents, 'out'),
+                  item.nominalRemainingCents ? metric('Total restante nominal', item.nominalRemainingCents) : metric('Custo diário/mensal', 'Juros ativos'),
+                  item.installmentCents ? metric('Parcela mensal', item.installmentCents) : metric('Ação', item.urgency === 'critical' ? 'Quitar urgente' : 'Acompanhar')
+                )
+              ))
+            ) : empty('Nenhuma dívida mapeada', 'Cadastre seus contratos para ativar o ranking de juros.')
+          ),
+          targetDebt ? h('div', { className: 'nf-sim-box' },
+            h('div', { className: 'nf-section-head' },
+              h('div', {},
+                h('h2', {}, 'Simulador de Amortização (Desconto BACEN)'),
+                muted(`Abatimento de trás para frente no contrato: ${targetDebt.name}`)
+              )
+            ),
+            h('div', { className: 'nf-form-grid' },
+              field('contract', 'Contrato selecionado',
+                h('select', { value: targetDebt.id, onChange: e => setSelectedDebtId(e.target.value) },
+                  debts.map(d => h('option', { key: d.id, value: d.id }, `${d.name} (${d.cetBps ? formatBps(d.cetBps) + ' CET' : d.interestRateBps ? formatBps(d.interestRateBps) + ' a.m.' : 'Sem taxa'})`))
+                )
+              ),
+              field('simAmount', 'Valor disponível para aporte (R$)',
+                inp('simAmount', simAmountStr, 'text', {
+                  inputMode: 'decimal',
+                  onChange: e => setSimAmountStr(e.target.value)
+                })
+              )
+            ),
+            h('div', { className: 'nf-sim-quick' },
+              muted('Atalhos rápidos:'),
+              ['500,00', '1.000,00', '2.000,00', '5.000,00', '10.000,00'].map(val =>
+                btn(`R$ ${val}`, () => setSimAmountStr(val), 'quiet small')
+              )
+            ),
+            simResult && simResult.eliminatedCount > 0 ? h(React.Fragment, {},
+              h('div', { className: 'nf-metrics', style: { marginTop: '16px' } },
+                metric('Parcelas eliminadas', `${simResult.eliminatedCount} do final`),
+                metric('Economia pura em juros', simResult.interestSavedCents, 'in'),
+                metric('Prazo reduzido', `${simResult.monthsReduced} meses adiantados`)
+              ),
+              h('p', { className: 'nf-notice' },
+                `Com R$ ${inputMoney(simResult.totalRealPaidCents)}, você quita R$ ${inputMoney(simResult.totalNominalEliminatedCents)} de dívida nominal! Desconto real de ${simResult.discountPercentage}% no valor das parcelas.`
+              ),
+              h('table', { className: 'nf-sim-table' },
+                h('thead', {},
+                  h('tr', {},
+                    h('th', {}, 'Parcela'),
+                    h('th', {}, 'Mês Vencimento'),
+                    h('th', { className: 'money' }, 'Valor Nominal'),
+                    h('th', { className: 'money' }, 'Valor c/ Desconto (VP)'),
+                    h('th', { className: 'money' }, 'Juros Economizados')
+                  )
+                ),
+                h('tbody', {},
+                  simResult.eliminated.map(row => h('tr', { key: row.number },
+                    h('td', {}, `Parcela ${row.number}`),
+                    h('td', {}, row.month),
+                    h('td', { className: 'money' }, money(row.nominalCents)),
+                    h('td', { className: 'money' }, money(row.presentValueCents)),
+                    h('td', { className: 'money', style: { color: 'var(--nf-green)', fontWeight: 'bold' } }, money(row.interestSavedCents))
+                  ))
+                )
+              )
+            ) : h('p', { className: 'nf-hint full' },
+              targetDebt.interestRateBps || targetDebt.cetBps
+                ? 'Informe um valor de aporte suficiente para quitar pelo menos uma parcela futura.'
+                : 'Este contrato não possui taxa de juros ou CET cadastrado para calcular o desconto. Edite o contrato e informe a taxa.'
+            )
+          ) : null
+        )
+      );
+    }
     function recurringView(){return section('Pensão e contas recorrentes','Valor fixo para o que você já conhece; valor a informar para o que muda a cada mês.',p.recurrences.length?h('div',{},p.recurrences.map(r=>row(r.name,`${r.type==='income'?'A receber':'A pagar'} · dia ${r.day} · ${accountName(s,r.accountId)} · ${r.active?'ativo':'pausado'}`,r.amountMode==='variable'?(r.amountCents?`Estimativa ${money(r.amountCents)}`:'Valor a informar'):r.amountCents,h('div',{className:'nf-actions'},btn('Editar',()=>open('recurrence',{item:r}),'quiet'),btn(r.active?'Pausar':'Ativar',()=>persist(state=>{const item=ensurePlans(state).recurrences.find(x=>x.id===r.id);item.active=!item.active;}).catch(err=>setNotice(err.message)),'quiet'))))):empty('Seus compromissos mensais','Cadastre pensão, aluguel, assinaturas, luz, internet ou recebimentos recorrentes.'),h('div',{className:'nf-actions'},btn('Pensão',()=>open('recurrence',{pension:true}),'small','pension'),btn('Recorrência',()=>open('recurrence'),'primary small','plus')));}
 
     let body;
-    if(tab==='overview')body=h(React.Fragment,{},h('div',{className:'nf-option-grid'},[['birthdays','birthday','Aniversários','Datas especiais e lembretes'],['payroll','payroll','CLT e folha','Salário, descontos e líquido'],['business','business','Minha empresa','Saldo e retiradas pessoais'],['commitments','debt','Consignado e financiamento','Contratos e parcelas restantes'],['commitments','pension','Pensão','Na folha ou paga pela conta'],['commitments','recurring','Contas recorrentes','Fixas ou com valor a informar'],['accounts','wallet','Contas e saldos','Separe pessoal e empresa']].map(([id,i,title,text])=>h('button',{key:title,className:'nf-option',onClick:()=>setTab(id)},icon(i),h('strong',{},title),h('span',{},text)))),h('div',{className:'nf-metrics'},metric('Saldo nas contas',actual.balanceCents),metric('Parcelas restantes',totalDebt,'out'),metric('Previsto a pagar no mês',projection.unknown?(money(projection.expenseCents)+' + '+projection.unknown+' a informar'):projection.expenseCents,'out')),section('Agenda financeira',`Competência ${month} · ${projection.unknown} compromisso(s) com valor a informar. Consignados já estão dentro dos descontos do salário.`,monthItems.length?monthItems.map(i=>h('div',{key:i.key},renderObligation(i))):empty('Sua agenda começa pelos cadastros','Cadastre uma folha, contrato ou conta recorrente para ver os próximos compromissos.'),btn('Gasto avulso',()=>open('entry',{type:'expense'}),'small','plus')));
+    if(tab==='overview')body=h(React.Fragment,{},h('div',{className:'nf-option-grid'},[['debts','debt','Dívidas & Juros','Simulador de amortização e ranking'],['birthdays','birthday','Aniversários','Datas especiais e lembretes'],['payroll','payroll','CLT e folha','Salário, descontos e líquido'],['business','business','Minha empresa','Saldo e retiradas pessoais'],['commitments','debt','Consignado e financiamento','Contratos e parcelas restantes'],['commitments','pension','Pensão','Na folha ou paga pela conta'],['commitments','recurring','Contas recorrentes','Fixas ou com valor a informar'],['accounts','wallet','Contas e saldos','Separe pessoal e empresa']].map(([id,i,title,text])=>h('button',{key:title,className:'nf-option',onClick:()=>setTab(id)},icon(i),h('strong',{},title),h('span',{},text)))),h('div',{className:'nf-metrics'},metric('Saldo nas contas',actual.balanceCents),metric('Parcelas restantes',totalDebt,'out'),metric('Previsto a pagar no mês',projection.unknown?(money(projection.expenseCents)+' + '+projection.unknown+' a informar'):projection.expenseCents,'out')),section('Agenda financeira',`Competência ${month} · ${projection.unknown} compromisso(s) com valor a informar. Consignados já estão dentro dos descontos do salário.`,monthItems.length?monthItems.map(i=>h('div',{key:i.key},renderObligation(i))):empty('Sua agenda começa pelos cadastros','Cadastre uma folha, contrato ou conta recorrente para ver os próximos compromissos.'),btn('Gasto avulso',()=>open('entry',{type:'expense'}),'small','plus')));
+    if(tab==='debts')body=debtsView();
     if(tab==='birthdays')body=birthdaysView();
     if(tab==='payroll')body=payrollView();
     if(tab==='business')body=h(React.Fragment,{},h('div',{className:'nf-metrics'},metric('Na empresa hoje',business.balanceCents,'in'),metric('Recebido no mês',business.incomeCents),metric('Retirado para mim',business.withdrawalsCents)),section('Dinheiro da empresa','Receber de um cliente é uma entrada. Retirar para sua conta pessoal é uma transferência.',business.accounts.length?h('div',{className:'nf-card-grid'},business.accounts.map(accountTile)):empty('Cadastre a conta da empresa','Ela aparece como um cartão próprio, com saldo separado do seu dinheiro pessoal.'),btn('Conta da empresa',()=>open('account',{scope:'business'}),'primary','plus')),section('Movimentações da empresa','Entradas, despesas, aportes e retiradas.',s.entries.filter(e=>e.status==='posted'&&e.date.startsWith(month)&&(entryScope(s,e)==='business'||(e.type==='transfer'&&s.accounts.find(a=>a.id===e.toAccountId)?.scope==='business'))).reverse().map(e=>row(e.description,e.type==='transfer'?`${accountName(s,e.accountId)} → ${accountName(s,e.toAccountId)}`:accountName(s,e.accountId),e.amountCents))));
@@ -314,7 +434,31 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
       if(modal.kind==='account-created')return h(Modal,{key:modal.key,title:'Conta bancária cadastrada',onClose:close,plain:true},h('p',{className:'nf-hint'},modal.account.name+' · '+modal.account.bank+' · '+SCOPES[modal.account.scope]),muted('Você pode adicionar agora um cartão físico, virtual ou adicional a esta conta.'),h('div',{className:'nf-form-actions'},btn('Concluir',close),btn('Adicionar cartão a esta conta',()=>open('card',{accountId:modal.account.id}),'primary','plus')));
       if(modal.kind==='payroll')return wrapper(item?'Editar CLT e folha':'Cadastrar meu CLT',h(React.Fragment,{},field('name','Empresa / trabalho CLT',inp('name',item?.name,'text',{required:true,maxLength:160}),true),centsField('base','Salário antes dos descontos cadastrados (R$)',item?.baseCents,true),field('accountId','Conta que recebe o salário',sel('accountId',item?.accountId,accountOpts(s,'personal')),true),field('payDay','Dia de pagamento',inp('payDay',item?.payDay||5,'number',{required:true,min:1,max:31})),field('startMonth','Acompanhar a partir de',inp('startMonth',item?.startMonth||month,'month',{required:true,min:'2000-01',max:'2200-12'}))),fd=>persist(state=>{const pay={...item,id:item?.id||uid(),name:fd.get('name').trim(),baseCents:cents(fd.get('base')),accountId:fd.get('accountId'),payDay:Number(fd.get('payDay')),startMonth:fd.get('startMonth'),active:true,deductions:item?.deductions||[]};const p=ensurePlans(state),i=p.payrolls.findIndex(x=>x.id===pay.id);if(i<0)p.payrolls.push(pay);else p.payrolls[i]=pay;}),'Use o valor da folha antes dos descontos que você cadastrar. INSS, impostos e outros descontos precisam ser informados por você.');
       if(modal.kind==='deduction')return h(DeductionForm,{key:modal.key,item,payrollId:modal.payrollId,initialKind:modal.initialKind||'other',onClose:close,month,onSave:fd=>persist(state=>{const p=ensurePlans(state),pay=p.payrolls.find(x=>x.id===modal.payrollId);const d={...item,id:item?.id||uid(),name:fd.get('name').trim(),kind:fd.get('kind'),mode:fd.get('mode'),amountCents:fd.get('mode')==='fixed'?cents(fd.get('value')):0,rateBps:fd.get('mode')==='percent'?cents(fd.get('value')):0,startMonth:fd.get('startMonth'),endMonth:fd.get('endMonth')||null,active:item?.active??true};const i=pay.deductions.findIndex(x=>x.id===d.id);if(i<0)pay.deductions.push(d);else pay.deductions[i]=d;})});
-      if(modal.kind==='debt')return h(DebtForm,{key:modal.key,item,defaults:modal,s,month,onClose:close,onSave:fd=>persist(state=>{const d={...item,id:item?.id||uid(),name:fd.get('name').trim(),kind:fd.get('kind'),creditor:fd.get('creditor').trim(),installmentCents:cents(fd.get('amount')),installments:Number(fd.get('count')),firstDueDate:fd.get('date'),payrollId:fd.get('kind')==='payroll_loan'?fd.get('payrollId'):null,accountId:fd.get('kind')==='payroll_loan'?null:fd.get('accountId')};const p=ensurePlans(state),index=p.debts.findIndex(x=>x.id===d.id);if(item&&(s.entries.some(e=>e.debtId===item.id)||p.payrollRuns.some(r=>r.deductions.some(d=>d.debtId===item.id)))){for(const key of ['kind','installmentCents','installments','firstDueDate','payrollId'])if(d[key]!==item[key])throw new Error('Este contrato já tem parcelas confirmadas. Mantenha o parcelamento para preservar o histórico.');}if(index<0)p.debts.push(d);else p.debts[index]=d;})});
+      if(modal.kind==='debt')return h(DebtForm,{key:modal.key,item,defaults:modal,s,month,onClose:close,onSave:fd=>persist(state=>{
+        const rateVal = fd.get('rate') ? fd.get('rate').trim() : '';
+        const cetVal = fd.get('cet') ? fd.get('cet').trim() : '';
+        const curBalVal = fd.get('currentBalance') ? fd.get('currentBalance').trim() : '';
+        const d={
+          ...item,
+          id:item?.id||uid(),
+          name:fd.get('name').trim(),
+          kind:fd.get('kind'),
+          creditor:fd.get('creditor')?fd.get('creditor').trim():'',
+          installmentCents:cents(fd.get('amount')),
+          installments:Number(fd.get('count')),
+          firstDueDate:fd.get('date'),
+          interestRateBps:rateVal?cents(rateVal):undefined,
+          cetBps:cetVal?cents(cetVal):undefined,
+          currentBalanceCents:curBalVal?cents(curBalVal):undefined,
+          payrollId:fd.get('kind')==='payroll_loan'?fd.get('payrollId'):null,
+          accountId:fd.get('kind')==='payroll_loan'?null:fd.get('accountId')
+        };
+        const p=ensurePlans(state),index=p.debts.findIndex(x=>x.id===d.id);
+        if(item&&(s.entries.some(e=>e.debtId===item.id)||p.payrollRuns.some(r=>r.deductions.some(d=>d.debtId===item.id)))){
+          for(const key of ['kind','installmentCents','installments','firstDueDate','payrollId'])if(d[key]!==item[key])throw new Error('Este contrato já tem parcelas confirmadas. Mantenha o parcelamento para preservar o histórico.');
+        }
+        if(index<0)p.debts.push(d);else p.debts[index]=d;
+      })});
       if(modal.kind==='recurrence')return h(RecurrenceForm,{key:modal.key,item,pension:modal.pension,s,month,onClose:close,onSave:fd=>persist(state=>{const r={...item,id:item?.id||uid(),name:fd.get('name').trim(),type:fd.get('type'),accountId:fd.get('accountId'),amountMode:fd.get('amountMode'),amountCents:fd.get('amount')?cents(fd.get('amount')):0,day:Number(fd.get('day')),paymentMethod:fd.get('method'),category:fd.get('category'),source:fd.get('source'),startMonth:fd.get('startMonth'),endMonth:fd.get('endMonth')||null,active:item?.active??true};const p=ensurePlans(state),i=p.recurrences.findIndex(x=>x.id===r.id);if(i<0)p.recurrences.push(r);else p.recurrences[i]=r;})});
       if(modal.kind==='entry')return wrapper(modal.type==='transfer'?'Retirada / transferência':modal.type==='income'?'Registrar recebimento':'Registrar gasto',h(EntryFields,{s,type:modal.type,defaults:modal.defaults}),fd=>persist(state=>state.entries.push(entryFrom(fd,modal.type))));
       if(modal.kind==='settle'){
@@ -336,7 +480,18 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
   }
   function DebtForm({item,defaults,s,month,onClose,onSave}) {
     const [kind,setKind]=React.useState(item?.kind||defaults.debtKind||defaults.contractKind||'loan');
-    return h(Modal,{title:item?'Editar contrato':'Consignado, financiamento ou empréstimo',onClose,onSubmit:onSave,hint:'Informe as parcelas que ainda faltam. O total mostrado soma essas parcelas, incluindo os juros já embutidos nelas; não é um cálculo de quitação antecipada.'},field('name','Nome do contrato',inp('name',item?.name,'text',{required:true,maxLength:160,placeholder:'Ex.: Consignado do banco ou financiamento do carro'}),true),field('kind','Tipo de contrato',h('select',{name:'kind',value:kind,onChange:e=>setKind(e.target.value)},h('option',{value:'payroll_loan'},'Consignado · descontado na folha'),h('option',{value:'financing'},'Financiamento'),h('option',{value:'loan'},'Outro empréstimo'))),field('creditor','Banco / credor (opcional)',inp('creditor',item?.creditor,'text',{maxLength:160})),centsField('amount','Valor de cada parcela (R$)',item?.installmentCents),field('count',item?'Parcelas cadastradas no início':'Parcelas ainda restantes',inp('count',item?.installments||1,'number',{required:true,min:1,max:600})),field('date','Vencimento da primeira restante',inp('date',item?.firstDueDate||dueDate(month,5),'date',{required:true,min:'2000-01-01',max:'2200-12-31'})),kind==='payroll_loan'?field('payrollId','Folha CLT vinculada',sel('payrollId',item?.payrollId||defaults.payrollId,[['','Selecione uma folha'],...plansOf(s).payrolls.map(p=>[p.id,p.name])])):field('accountId','Conta que paga as parcelas',sel('accountId',item?.accountId,accountOpts(s))));
+    return h(Modal,{title:item?'Editar contrato':'Consignado, financiamento ou empréstimo',onClose,onSubmit:onSave,hint:'Informe as parcelas restantes. Opcionalmente informe taxas para simulação de amortização.'},
+      field('name','Nome do contrato',inp('name',item?.name,'text',{required:true,maxLength:160,placeholder:'Ex.: Consignado TECFAG ou Financiamento HB20'}),true),
+      field('kind','Tipo de contrato',h('select',{name:'kind',value:kind,onChange:e=>setKind(e.target.value)},h('option',{value:'payroll_loan'},'Consignado · descontado na folha'),h('option',{value:'financing'},'Financiamento'),h('option',{value:'loan'},'Outro empréstimo'))),
+      field('creditor','Banco / credor (opcional)',inp('creditor',item?.creditor,'text',{maxLength:160})),
+      centsField('amount','Valor de cada parcela (R$)',item?.installmentCents),
+      field('count',item?'Parcelas cadastradas no início':'Parcelas ainda restantes',inp('count',item?.installments||1,'number',{required:true,min:1,max:600})),
+      field('date','Vencimento da primeira restante',inp('date',item?.firstDueDate||dueDate(month,5),'date',{required:true,min:'2000-01-01',max:'2200-12-31'})),
+      field('rate','Taxa de juros mensal (%, opcional)',inp('rate',item?.interestRateBps?inputMoney(item.interestRateBps):'','text',{inputMode:'decimal',placeholder:'Ex.: 4,98'})),
+      field('cet','Custo Efetivo Total CET (%, opcional)',inp('cet',item?.cetBps?inputMoney(item.cetBps):'','text',{inputMode:'decimal',placeholder:'Ex.: 5,85'})),
+      field('currentBalance','Saldo devedor p/ quitação (R$, opcional)',inp('currentBalance',item?.currentBalanceCents?inputMoney(item.currentBalanceCents):'','text',{inputMode:'decimal',placeholder:'Ex.: 19403,17'})),
+      kind==='payroll_loan'?field('payrollId','Folha CLT vinculada',sel('payrollId',item?.payrollId||defaults.payrollId,[['','Selecione uma folha'],...plansOf(s).payrolls.map(p=>[p.id,p.name])])):field('accountId','Conta que paga as parcelas',sel('accountId',item?.accountId,accountOpts(s)))
+    );
   }
   function RecurrenceForm({item,pension,s,month,onClose,onSave}) {
     const [type,setType]=React.useState(item?.type||'expense'),[mode,setMode]=React.useState(item?.amountMode||'fixed');

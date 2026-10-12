@@ -23,6 +23,7 @@ export function cents(value) {
   return result;
 }
 export const inputMoney = value => (value / 100).toFixed(2).replace('.', ',');
+export const formatBps = bps => (Number(bps) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
 export function validDate(s) {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const [y,m,d] = s.split('-').map(Number), dt = new Date(y,m-1,d);
@@ -74,6 +75,10 @@ export function validateState(s) {
   for (const a of s.accounts) {
     assert(shortText(a.name) && Object.hasOwn(SCOPES,a.scope) && ['bank','cash'].includes(a.kind), 'Conta inválida.');
     assert(a.bank === undefined || (typeof a.bank === 'string' && a.bank.length <= 160), 'Banco inválido.');
+    assert(!a.agency || (typeof a.agency === 'string' && a.agency.length <= 40), 'Agência inválida.');
+    assert(!a.accountNumber || (typeof a.accountNumber === 'string' && a.accountNumber.length <= 40), 'Número da conta inválido.');
+    assert(a.overdraftLimitCents === undefined || signedAmount(a.overdraftLimitCents), 'Limite do cheque especial inválido.');
+    assert(a.overdraftRateBps === undefined || (Number.isInteger(a.overdraftRateBps) && a.overdraftRateBps >= 0 && a.overdraftRateBps <= 10000), 'Taxa do cheque especial inválida.');
     assert(signedAmount(a.openingBalanceCents) && validDate(a.openingDate), 'Saldo ou data inicial inválida.');
   }
   for (const c of s.cards) {
@@ -254,6 +259,14 @@ function validatePlans(s) {
     assert(shortText(debt.name)&&['payroll_loan','financing','loan'].includes(debt.kind)&&amount(debt.installmentCents),'Contrato inválido.');
     assert(Number.isInteger(debt.installments)&&debt.installments>=1&&debt.installments<=600&&validDate(debt.firstDueDate),'Parcelas do contrato inválidas.');
     assert(validDate(addMonths(debt.firstDueDate,debt.installments-1)),'As parcelas excedem o período permitido.');
+    assert(!debt.creditor || (typeof debt.creditor === 'string' && debt.creditor.length <= 160), 'Credor inválido.');
+    assert(!debt.contractNumber || (typeof debt.contractNumber === 'string' && debt.contractNumber.length <= 80), 'Número do contrato inválido.');
+    assert(debt.interestRateBps === undefined || (Number.isInteger(debt.interestRateBps) && debt.interestRateBps >= 0 && debt.interestRateBps <= 10000), 'Taxa de juros inválida.');
+    assert(debt.cetBps === undefined || (Number.isInteger(debt.cetBps) && debt.cetBps >= 0 && debt.cetBps <= 10000), 'CET inválido.');
+    assert(debt.originalAmountCents === undefined || amount(debt.originalAmountCents), 'Valor original inválido.');
+    assert(debt.currentBalanceCents === undefined || signedAmount(debt.currentBalanceCents), 'Saldo devedor inválido.');
+    assert(debt.totalContractInstallments === undefined || (Number.isInteger(debt.totalContractInstallments) && debt.totalContractInstallments >= 1 && debt.totalContractInstallments <= 600), 'Total de parcelas contratadas inválido.');
+    assert(debt.paidInstallments === undefined || (Number.isInteger(debt.paidInstallments) && debt.paidInstallments >= 0 && debt.paidInstallments <= 600), 'Parcelas pagas inválidas.');
     if(debt.kind==='payroll_loan')assert(p.payrolls.some(pay=>pay.id===debt.payrollId),'Vincule o consignado a uma folha de pagamento.');
     else assert(s.accounts.some(a=>a.id===debt.accountId),'Informe a conta para pagar o contrato.');
   }

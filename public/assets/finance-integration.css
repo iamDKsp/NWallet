@@ -19,3 +19,12 @@
 .nf-connection{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.nf-home-connections>.nf-connection{grid-column:1/-1}
 .nf-linked-cards{margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,.14)}.nf-linked-cards>strong{font-size:13px}.nf-linked-cards>.nf-button{margin-top:12px;white-space:normal;text-align:center}.nf-linked-cards .nf-row{gap:8px}.nf-linked-cards .nf-row-end{flex-shrink:1}.nf-field input[readonly]{opacity:.75;background:rgba(82,183,83,.06)}.nf-form-grid>details{margin-top:0;padding-top:0;border:0}.nf-form-grid>details>.nf-form-grid{margin-top:16px}
 .nf-notifications{display:flex;flex-direction:column;gap:16px}.nf-notifications>.nf-error,.nf-notifications>.nf-notice{margin-bottom:0!important}.nf-notification-sheet{max-width:720px}.nf-notification-settings{display:grid;gap:15px;margin:18px 0}.nf-check{display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer}.nf-check input{width:18px;height:18px;accent-color:#52b753;flex-shrink:0}.nf-reminder-days{display:flex;flex-wrap:wrap;gap:12px}.nf-reminder-days>span{width:100%;font-size:12px;color:var(--nf-muted)}.nf-late{color:var(--nf-red);border-color:rgba(242,154,154,.4)}.nf-notification-actions,.nf-notification-filters{margin:16px 0}.nf-notification-settings input[type=time]{max-width:180px}
+.nf-badge.critical{color:var(--nf-red);background:rgba(242,154,154,.15);border-color:rgba(242,154,154,.4);font-weight:650}
+.nf-badge.warning{color:#f59e0b;background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);font-weight:650}
+.nf-sim-box{background:linear-gradient(135deg,rgba(82,183,83,.07),rgba(255,255,255,.025));border:1px solid rgba(82,183,83,.28);border-radius:22px;padding:22px;margin:20px 0}
+.nf-sim-quick{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.nf-sim-table{width:100%;margin-top:14px;border-collapse:collapse}
+.nf-sim-table th,.nf-sim-table td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--nf-line);font-size:12px}
+.nf-sim-table th{color:var(--nf-muted);font-weight:600}
+.nf-sim-table td.money{text-align:right}
+
