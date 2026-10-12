@@ -18,7 +18,7 @@ export function walletErrorMessage(err) {
 }
 export function workspaceSection(search,requested) {
   const view=requested||new URLSearchParams(search).get('view');
-  return ['overview','debts','payroll','business','commitments','accounts','history','birthdays','cart','notifications'].includes(view)?view:'overview';
+  return ['overview','debts','payroll','business','commitments','accounts','history','birthdays','cart','notifications','contracts','pension','recurring'].includes(view)?view:'overview';
 }
 
 // Shared by the original dashboard, entry sheets and Wallet screen.
@@ -134,7 +134,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
     if(p.payrolls.length){const net=p.payrolls.filter(p=>p.active).reduce((v,p)=>v+payrollPreview(s,p,monthNow()).netCents,0);return `Líquido previsto do CLT: ${money(net)}. Saldo da empresa: ${money(company.balanceCents)}. Confira os contratos e vencimentos na Carteira.`;}
     return `Seu dinheiro está distribuído em ${s.accounts.length} conta(s). Cadastre o CLT e as contas recorrentes para enxergar os próximos compromissos.`;
   }
-  const paths={wallet:'M3 7h18v13H3z M3 7V4h15v3 M15 11h6v5h-6z',payroll:'M5 3h14v18H5z M9 7h6 M9 11h6 M9 15h3',business:'M3 21V7h18v14 M8 7V3h8v4 M7 11h2 M15 11h2 M7 15h2 M15 15h2 M10 21v-3h4v3',debt:'M12 3a9 9 0 1 0 9 9 M12 7v5l3 2',pension:'M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M17 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M2 21v-5a5 5 0 0 1 10 0v5 M14 21v-5a4 4 0 0 1 8 0v5',recurring:'M20 8a8 8 0 0 0-14-3L3 8 M3 3v5h5 M4 16a8 8 0 0 0 14 3l3-3 M16 16h5v5',plus:'M12 5v14 M5 12h14',close:'M6 6l12 12 M6 18 18 6',transfer:'M3 7h17l-4-4 M20 7l-4 4 M21 17H4l4-4 M4 17l4 4',check:'M5 12l4 4L19 6',card:'M3 5h18v14H3z M3 10h18 M6 15h4',birthday:'M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8 M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1 M2 21h20 M7 8v3 M12 8v3 M17 8v3 M7 4h.01 M12 4h.01 M17 4h.01',calendar:'M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M16 2v4 M8 2v4 M3 10h18',cart:'M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6 M10 21a1 1 0 1 1-2 0 1 1 0 0 1 2 0 M21 21a1 1 0 1 1-2 0 1 1 0 0 1 2 0',external:'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6 M15 3h6v6 M10 14L21 3'};
+  const paths={wallet:'M3 7h18v13H3z M3 7V4h15v3 M15 11h6v5h-6z',payroll:'M5 3h14v18H5z M9 7h6 M9 11h6 M9 15h3',business:'M3 21V7h18v14 M8 7V3h8v4 M7 11h2 M15 11h2 M7 15h2 M15 15h2 M10 21v-3h4v3',debt:'M12 3a9 9 0 1 0 9 9 M12 7v5l3 2',pension:'M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M17 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M2 21v-5a5 5 0 0 1 10 0v5 M14 21v-5a4 4 0 0 1 8 0v5',recurring:'M20 8a8 8 0 0 0-14-3L3 8 M3 3v5h5 M4 16a8 8 0 0 0 14 3l3-3 M16 16h5v5',plus:'M12 5v14 M5 12h14',close:'M6 6l12 12 M6 18 18 6',transfer:'M3 7h17l-4-4 M20 7l-4 4 M21 17H4l4-4 M4 17l4 4',check:'M5 12l4 4L19 6',card:'M3 5h18v14H3z M3 10h18 M6 15h4',birthday:'M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8 M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1 M2 21h20 M7 8v3 M12 8v3 M17 8v3 M7 4h.01 M12 4h.01 M17 4h.01',calendar:'M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M16 2v4 M8 2v4 M3 10h18',cart:'M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6 M10 21a1 1 0 1 1-2 0 1 1 0 0 1 2 0 M21 21a1 1 0 1 1-2 0 1 1 0 0 1 2 0',external:'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6 M15 3h6v6 M10 14L21 3',history:'M12 8v4l3 3 M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.36 2.64L3 8 M3 3v5h5',bell:'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0',arrowLeft:'M19 12H5 M12 19l-7-7 7-7'};
   const icon=name=>h('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:paths[name]||paths.wallet}));
   const btn=(label,fn,kind='',ico)=>h('button',{type:'button',className:'nf-button '+kind,onClick:fn},ico&&icon(ico),label);
   const muted=text=>h('p',{className:'nf-muted'},text);
@@ -366,12 +366,19 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
   function Workspace({isDarkMode=true}) {
     const nw=useWallet(),s=nw.state,p=plansOf(s);
     const [tab,setTab]=React.useState(()=>workspaceSection(location.search,pendingWorkspaceTab)),[month,setMonth]=useSelectedMonth(),[modal,setModal]=React.useState(null),[notice,setNotice]=React.useState('');
-    React.useEffect(()=>{pendingWorkspaceTab=undefined;sectionListeners.add(setTab);return()=>sectionListeners.delete(setTab);},[]);
+    React.useEffect(()=>{
+      pendingWorkspaceTab=undefined;
+      sectionListeners.add(setTab);
+      const dockWalletBtn=document.getElementById('nav-wallet');
+      const handleDock=()=>setTab('overview');
+      dockWalletBtn?.addEventListener('click',handleDock);
+      return()=>{sectionListeners.delete(setTab);dockWalletBtn?.removeEventListener('click',handleDock);};
+    },[]);
     const open=(kind,data={})=>{setNotice('');setModal({...data,kind,key:uid()});};
     const close=()=>setModal(null);
     const persist=async fn=>{await nw.save(fn);setNotice('Salvo no seu financeiro.');};
     const monthItems=obligations(s,month),projection=cashProjection(s,month),business=businessSummary(s,month),actual=summary(s,month);
-    const tabs=[['overview','Visão geral'],['debts','Dívidas & Juros'],['cart','Carrinho'],['birthdays','Aniversários'],['payroll','CLT e folha'],['business','Empresa'],['commitments','Compromissos'],['accounts','Contas'],['history','Registros'],['notifications','Notificações']];
+    const tabs=[['overview','Visão geral'],['debts','Dívidas & Juros'],['cart','Carrinho'],['birthdays','Aniversários'],['payroll','CLT e folha'],['business','Empresa'],['contracts','Consignado e financiamento'],['pension','Pensão'],['recurring','Contas recorrentes'],['accounts','Contas'],['commitments','Compromissos'],['history','Registros'],['notifications','Notificações']];
     const agendaItems=[...monthItems,...invoices(s).filter(i=>i.date.startsWith(month)&&i.remainingCents>0).map(i=>({...i,name:'Fatura · '+i.name,kind:'invoice',type:'expense',amountCents:i.remainingCents}))].sort((a,b)=>a.date.localeCompare(b.date));
     const noAccounts=()=>empty('Comece pelas suas contas','Cadastre a conta que recebe seu salário, a conta da empresa e o dinheiro em mãos.');
     const totalDebt=p.debts.reduce((v,d)=>v+debtSchedule(s,d).filter(i=>!i.paid).reduce((a,i)=>a+i.amountCents,0),0);
@@ -432,7 +439,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
         btn('Novo Aniversário',()=>open('birthday'),'primary','plus')
       );
     }
-    function cartView() {
+    function CartView({ s, open, persist, setNotice }) {
       const list=cartOf(s);
       const cSum=cartSummary(s);
       const [statusFilter,setStatusFilter]=React.useState('all');
@@ -559,18 +566,192 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
       })):empty('Cadastre seu trabalho CLT','Informe o salário antes dos descontos que você vai cadastrar. Depois vincule consignados, pensão e outros descontos.'),btn('Cadastrar CLT',()=>open('payroll'),'primary','plus'));
     }
     function debtView(){return section('Consignados, financiamentos e empréstimos','Cadastre somente as parcelas que ainda faltam, com os valores do seu contrato.',p.debts.length?h('div',{className:'nf-stack'},p.debts.map(d=>{const schedule=debtSchedule(s,d),remaining=schedule.filter(i=>!i.paid),paid=schedule.length-remaining.length,pay=p.payrolls.find(p=>p.id===d.payrollId);return h('article',{key:d.id,className:'nf-contract-card'},h('div',{className:'nf-section-head'},h('div',{},h('h3',{},d.name),muted(`${({payroll_loan:'Consignado',financing:'Financiamento',loan:'Empréstimo'})[d.kind]}${pay?` · vinculado a ${pay.name}`:` · ${accountName(s,d.accountId)}`}${d.creditor?` · ${d.creditor}`:''}`)),h('div',{className:'nf-actions'},d.cetBps?h('span',{className:'nf-badge warning'},`CET ${formatBps(d.cetBps)} a.m.`):d.interestRateBps?h('span',{className:'nf-badge'},`${formatBps(d.interestRateBps)} a.m.`):null,btn('Simular',()=>{pendingDebtId=d.id;setTab('debts');},'quiet small'),btn('Editar',()=>open('debt',{item:d}),'small'))),h('div',{className:'nf-metrics'},metric('Parcela',d.installmentCents),metric('Faltam',`${remaining.length} parcelas`),metric('Total a pagar',remaining.length*d.installmentCents,'out')),d.currentBalanceCents?muted(`Saldo p/ quitação informado: ${money(d.currentBalanceCents)}`):null,debtAmounts(s,d,month).warnings.map(w=>h('p',{key:w,className:'nf-notice'},w)),h('div',{className:'nf-progress'},h('span',{style:{width:`${paid/schedule.length*100}%`}})),muted(`${paid} de ${schedule.length} parcelas cadastradas confirmadas${d.kind==='payroll_loan'?' · descontadas ao confirmar o salário':''}`));})):empty('Mapeie suas dívidas','Seu consignado fica ligado à folha. Financiamentos e outros empréstimos saem da conta escolhida.'),btn('Adicionar contrato',()=>open('debt'),'primary','plus'));}
-    function recurringView(){return section('Pensão e contas recorrentes','Valor fixo para o que você já conhece; valor a informar para o que muda a cada mês.',p.recurrences.length?h('div',{},p.recurrences.map(r=>row(r.name,`${r.type==='income'?'A receber':'A pagar'} · dia ${r.day} · ${accountName(s,r.accountId)} · ${r.active?'ativo':'pausado'}`,r.amountMode==='variable'?(r.amountCents?`Estimativa ${money(r.amountCents)}`:'Valor a informar'):r.amountCents,h('div',{className:'nf-actions'},btn('Editar',()=>open('recurrence',{item:r}),'quiet'),btn(r.active?'Pausar':'Ativar',()=>persist(state=>{const item=ensurePlans(state).recurrences.find(x=>x.id===r.id);item.active=!item.active;}).catch(err=>setNotice(err.message)),'quiet'))))):empty('Seus compromissos mensais','Cadastre pensão, aluguel, assinaturas, luz, internet ou recebimentos recorrentes.'),h('div',{className:'nf-actions'},btn('Pensão',()=>open('recurrence',{pension:true}),'small','pension'),btn('Recorrência',()=>open('recurrence'),'primary small','plus')));}
+
+    function pensionView() {
+      const payrollPensions = p.payrolls.flatMap(pay => (pay.deductions||[]).filter(d => d.kind === 'pension').map(d => ({ ...d, payrollName: pay.name, payrollId: pay.id })));
+      const recurringPensions = p.recurrences.filter(r => r.category === 'Pensão' || (r.name && r.name.toLowerCase().includes('pens')));
+      const hasPensions = payrollPensions.length > 0 || recurringPensions.length > 0;
+
+      return section('Pensão alimentícia', 'Cadastre pensão descontada na folha CLT ou paga todo mês pela conta bancária.',
+        h(React.Fragment, {},
+          payrollPensions.length > 0 && h('div', { className: 'nf-panel', style: { marginBottom: 16 } },
+            h('h3', {}, 'Descontada na folha (CLT)'),
+            muted('Já sai direto do salário antes do depósito na conta.'),
+            payrollPensions.map(d => row(
+              d.name,
+              `Vinculada a ${d.payrollName} · ${d.active ? 'Ativo' : 'Pausado'}`,
+              d.mode === 'percent' ? `${inputMoney(d.rateBps)}% do salário` : d.amountCents,
+              h('div', { className: 'nf-actions' },
+                btn('Editar', () => open('deduction', { payrollId: d.payrollId, item: d, initialKind: 'pension' }), 'quiet'),
+                btn(d.active ? 'Pausar' : 'Ativar', () => persist(state => {
+                  const deduction = ensurePlans(state).payrolls.find(x => x.id === d.payrollId).deductions.find(x => x.id === d.id);
+                  deduction.active = !deduction.active;
+                }).catch(err => setNotice(err.message)), 'quiet')
+              ),
+              badge('Desconto em folha')
+            ))
+          ),
+          recurringPensions.length > 0 && h('div', { className: 'nf-panel', style: { marginBottom: 16 } },
+            h('h3', {}, 'Paga pela conta bancária (Recorrência)'),
+            muted('O valor sai da conta no dia cadastrado e precisa ser confirmado a cada mês.'),
+            recurringPensions.map(r => row(
+              r.name,
+              `${r.type === 'income' ? 'A receber' : 'A pagar'} · dia ${r.day} · ${accountName(s, r.accountId)} · ${r.active ? 'ativo' : 'pausado'}`,
+              r.amountMode === 'variable' ? (r.amountCents ? `Estimativa ${money(r.amountCents)}` : 'Valor a informar') : r.amountCents,
+              h('div', { className: 'nf-actions' },
+                btn('Editar', () => open('recurrence', { item: r, pension: true }), 'quiet'),
+                btn(r.active ? 'Pausar' : 'Ativar', () => persist(state => {
+                  const item = ensurePlans(state).recurrences.find(x => x.id === r.id);
+                  item.active = !item.active;
+                }).catch(err => setNotice(err.message)), 'quiet')
+              )
+            ))
+          ),
+          !hasPensions && empty('Nenhuma pensão cadastrada', 'Você pode cadastrar pensão como desconto em folha CLT ou como compromisso mensal pela conta.'),
+          h('div', { className: 'nf-actions', style: { marginTop: 16 } },
+            p.payrolls.length > 0 && btn('Pensão na folha', () => open('deduction', { payrollId: p.payrolls[0].id, initialKind: 'pension' }), 'small', 'pension'),
+            btn('Pensão pela conta', () => open('recurrence', { pension: true }), 'primary small', 'plus')
+          )
+        )
+      );
+    }
+
+    function recurringView() {
+      const list = p.recurrences.filter(r => !(r.category === 'Pensão' || (r.name && r.name.toLowerCase().includes('pens'))));
+      return section('Contas recorrentes', 'Valor fixo para o que você já conhece; valor a informar para o que muda a cada mês.',
+        list.length ? h('div', {}, list.map(r => row(
+          r.name,
+          `${r.type === 'income' ? 'A receber' : 'A pagar'} · dia ${r.day} · ${accountName(s, r.accountId)} · ${r.active ? 'ativo' : 'pausado'}`,
+          r.amountMode === 'variable' ? (r.amountCents ? `Estimativa ${money(r.amountCents)}` : 'Valor a informar') : r.amountCents,
+          h('div', { className: 'nf-actions' },
+            btn('Editar', () => open('recurrence', { item: r }), 'quiet'),
+            btn(r.active ? 'Pausar' : 'Ativar', () => persist(state => {
+              const item = ensurePlans(state).recurrences.find(x => x.id === r.id);
+              item.active = !item.active;
+            }).catch(err => setNotice(err.message)), 'quiet')
+          )
+        ))) : empty('Seus compromissos mensais', 'Cadastre aluguel, assinaturas, luz, internet ou recebimentos recorrentes.'),
+        h('div', { className: 'nf-actions' },
+          btn('Nova recorrência', () => open('recurrence'), 'primary small', 'plus')
+        )
+      );
+    }
+
+    function commitmentsView() {
+      return h(React.Fragment, {},
+        h('div', { className: 'nf-metrics' },
+          metric('Saldo nas contas', actual.balanceCents),
+          metric('Parcelas restantes', totalDebt, 'out'),
+          metric('Previsto a pagar no mês', projection.unknown ? (money(projection.pendingCents) + ' + ' + projection.unknown + ' a informar') : projection.pendingCents, 'out')
+        ),
+        section('Compromissos do mês & Agenda financeira', `Competência ${month} · ${projection.unknown} compromisso(s) com valor a informar. Consignados já estão dentro dos descontos do salário.`,
+          agendaItems.length ? agendaItems.map(i => h('div', { key: i.key }, renderObligation(i))) : empty('Nenhum compromisso cadastrado para esta competência', 'Cadastre uma folha, contrato ou conta recorrente para ver os próximos compromissos.'),
+          btn('Gasto avulso', () => open('entry', { type: 'expense' }), 'small', 'plus')
+        )
+      );
+    }
+
+    function historyView() {
+      const postedEntries = s.entries.filter(e => e.status === 'posted' && e.date <= today() && e.date.startsWith(month));
+      return section('Registros reais', `Movimentações confirmadas em ${month}.`,
+        postedEntries.length
+          ? postedEntries.slice().sort((a, b) => b.date.localeCompare(a.date)).map(e => row(
+              e.description,
+              e.type === 'transfer' ? `${accountName(s, e.accountId)} → ${accountName(s, e.toAccountId)}` : `${new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR')} · ${accountName(s, e.accountId)} · ${e.category || SOURCES[e.source] || 'Fatura'}`,
+              `${e.type === 'income' ? '+' : e.type === 'expense' ? '-' : ''}${money(e.amountCents)}`,
+              btn('Excluir', () => open('delete-entry', { item: e }), 'quiet')
+            ))
+          : empty('Nenhuma movimentação confirmada nesta competência', 'Saldos iniciais e compromissos previstos ficam nas suas respectivas seções.'),
+        h('div', { className: 'nf-actions' },
+          btn('Recebimento', () => open('entry', { type: 'income' }), 'small'),
+          btn('Gasto', () => open('entry', { type: 'expense' }), 'small'),
+          btn('Transferir', () => open('entry', { type: 'transfer' }), 'primary small')
+        )
+      );
+    }
 
     let body;
-    if(tab==='overview')body=h(React.Fragment,{},h('div',{className:'nf-option-grid'},[['debts','debt','Dívidas & Juros','Simulador de amortização e ranking'],['cart','cart','Carrinho','Lista de compras futuras e desejos'],['birthdays','birthday','Aniversários','Datas especiais e lembretes'],['payroll','payroll','CLT e folha','Salário, descontos e líquido'],['business','business','Minha empresa','Saldo e retiradas pessoais'],['commitments','debt','Consignado e financiamento','Contratos e parcelas restantes'],['commitments','pension','Pensão','Na folha ou paga pela conta'],['commitments','recurring','Contas recorrentes','Fixas ou com valor a informar'],['accounts','wallet','Contas e saldos','Separe pessoal e empresa']].map(([id,i,title,text])=>h('button',{key:title,className:'nf-option',onClick:()=>setTab(id)},icon(i),h('strong',{},title),h('span',{},text)))),h('div',{className:'nf-metrics'},metric('Saldo nas contas',actual.balanceCents),metric('Parcelas restantes',totalDebt,'out'),metric('Previsto a pagar no mês',projection.unknown?(money(projection.pendingCents)+' + '+projection.unknown+' a informar'):projection.pendingCents,'out')),section('Agenda financeira',`Competência ${month} · ${projection.unknown} compromisso(s) com valor a informar. Consignados já estão dentro dos descontos do salário.`,agendaItems.length?agendaItems.map(i=>h('div',{key:i.key},renderObligation(i))):empty('Sua agenda começa pelos cadastros','Cadastre uma folha, contrato ou conta recorrente para ver os próximos compromissos.'),btn('Gasto avulso',()=>open('entry',{type:'expense'}),'small','plus')));
-    if(tab==='debts')body=h(DebtsView,{s,p,month});
-    if(tab==='cart')body=cartView();
-    if(tab==='birthdays')body=birthdaysView();
-    if(tab==='payroll')body=payrollView();
-    if(tab==='business')body=h(React.Fragment,{},h('div',{className:'nf-metrics'},metric('Na empresa hoje',business.balanceCents,'in'),metric('Recebido no mês',business.incomeCents),metric('Retirado para mim',business.withdrawalsCents)),section('Dinheiro da empresa','Receber de um cliente é uma entrada. Retirar para sua conta pessoal é uma transferência.',business.accounts.length?h('div',{className:'nf-card-grid'},business.accounts.map(accountTile)):empty('Cadastre a conta da empresa','Ela aparece como um cartão próprio, com saldo separado do seu dinheiro pessoal.'),btn('Conta da empresa',()=>open('account',{scope:'business'}),'primary','plus')),section('Movimentações da empresa','Entradas, despesas, aportes e retiradas.',s.entries.filter(e=>e.status==='posted'&&e.date.startsWith(month)&&(entryScope(s,e)==='business'||(e.type==='transfer'&&s.accounts.find(a=>a.id===e.toAccountId)?.scope==='business'))).reverse().map(e=>row(e.description,e.type==='transfer'?`${accountName(s,e.accountId)} → ${accountName(s,e.toAccountId)}`:accountName(s,e.accountId),e.amountCents))));
-    if(tab==='commitments')body=h(React.Fragment,{},debtView(),recurringView(),section('Compromissos deste mês',`${projection.unknown} valor(es) ainda não informado(s).`,monthItems.filter(i=>i.type==='expense').length?monthItems.filter(i=>i.type==='expense').map(i=>h('div',{key:i.key},renderObligation(i))):empty('Nenhuma obrigação cadastrada','Cadastre os compromissos conhecidos para acompanhar os vencimentos.')));
-    if(tab==='accounts')body=h(React.Fragment,{},section('Suas contas e dinheiro em mãos','Cada conta bancária reúne seu saldo e seus cartões vinculados.',s.accounts.length?h('div',{className:'nf-card-grid'},s.accounts.map(accountTile)):noAccounts(),h('div',{className:'nf-actions'},btn('Conta pessoal',()=>open('account',{scope:'personal'}),'small','plus'),btn('Conta da empresa',()=>open('account',{scope:'business'}),'primary small','plus'))),section('Cartões sem conta vinculada','Vincule um cartão existente a uma conta bancária ou mantenha um cartão independente.',s.cards.filter(c=>!c.accountId).length?s.cards.filter(c=>!c.accountId).map(c=>row(c.name,cardBank(s,c)+' · '+SCOPES[c.scope],undefined,btn('Editar / vincular',()=>open('card',{item:c}),'small'))):muted(s.cards.length?'Todos os seus cartões estão vinculados a contas.':'Nenhum cartão cadastrado ainda.'),btn('Adicionar cartão',()=>open('card'),'small','plus')),section('Faturas dos cartões','Todos os meses. Compras e parcelas ficam no cartão; pagar a fatura não repete o gasto.',invoices(s).length?invoices(s).map(i=>h('div',{key:i.key},row(i.name,'Vencimento '+new Date(i.date+'T12:00:00').toLocaleDateString('pt-BR')+' · '+SCOPES[i.scope],i.remainingCents,i.remainingCents>0?btn('Pagar',()=>open('invoice',{item:i}),'small'):badge('Quitada','success')),h('details',{},h('summary',{},'Composição da fatura'),i.items.map((item,n)=>row(item.description,item.installment?'Parcela '+item.installment:'Saldo trazido para o controle',item.amountCents)),row('Total da fatura','',i.totalCents),row('Pagamentos confirmados','',i.paidCents),row('Saldo em aberto','',i.remainingCents)))):empty('Sem faturas cadastradas','Configure o fechamento e o vencimento ao cadastrar ou editar um cartão.')));
-    if(tab==='history')body=section('Registros reais',`Movimentações confirmadas em ${month}.`,s.entries.some(e=>e.status==='posted'&&e.date<=today()&&e.date.startsWith(month))?s.entries.filter(e=>e.status==='posted'&&e.date<=today()&&e.date.startsWith(month)).slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>row(e.description,e.type==='transfer'?`${accountName(s,e.accountId)} → ${accountName(s,e.toAccountId)}`:`${new Date(e.date+'T12:00:00').toLocaleDateString('pt-BR')} · ${accountName(s,e.accountId)} · ${e.category||SOURCES[e.source]||'Fatura'}`,`${e.type==='income'?'+':e.type==='expense'?'-':''}${money(e.amountCents)}`,btn('Excluir',()=>open('delete-entry',{item:e}),'quiet'))):empty('Nenhuma movimentação confirmada nesta competência','Saldos iniciais e compromissos previstos ficam nas suas respectivas seções.'),h('div',{className:'nf-actions'},btn('Recebimento',()=>open('entry',{type:'income'}),'small'),btn('Gasto',()=>open('entry',{type:'expense'}),'small'),btn('Transferir',()=>open('entry',{type:'transfer'}),'primary small')));
+    if(tab==='overview') {
+      body = h('div', { className: 'nf-option-grid' },
+        [
+          ['debts', 'debt', 'Dívidas & Juros', 'Simulador de amortização e ranking'],
+          ['cart', 'cart', 'Carrinho', 'Lista de compras futuras e desejos'],
+          ['birthdays', 'birthday', 'Aniversários', 'Datas especiais e lembretes'],
+          ['payroll', 'payroll', 'CLT e folha', 'Salário, descontos e líquido'],
+          ['business', 'business', 'Minha empresa', 'Saldo e retiradas pessoais'],
+          ['contracts', 'debt', 'Consignado e financiamento', 'Contratos e parcelas restantes'],
+          ['pension', 'pension', 'Pensão', 'Na folha ou paga pela conta'],
+          ['recurring', 'recurring', 'Contas recorrentes', 'Fixas ou com valor a informar'],
+          ['accounts', 'wallet', 'Contas e saldos', 'Separe pessoal e empresa'],
+          ['commitments', 'calendar', 'Compromissos do mês', 'Agenda financeira e vencimentos'],
+          ['history', 'history', 'Registros reais', 'Extrato de movimentações confirmadas'],
+          ['notifications', 'bell', 'Notificações', 'Central de avisos e lembretes']
+        ].map(([id, ico, title, text]) =>
+          h('button', { key: id, type: 'button', className: 'nf-option', onClick: () => setTab(id) },
+            icon(ico),
+            h('strong', {}, title),
+            h('span', {}, text)
+          )
+        )
+      );
+    }
+    if(tab==='debts') body = h(DebtsView, { s, p, month });
+    if(tab==='cart') body = h(CartView, { s, open, persist, setNotice });
+    if(tab==='birthdays') body = birthdaysView();
+    if(tab==='payroll') body = payrollView();
+    if(tab==='business') body = h(React.Fragment, {},
+      h('div', { className: 'nf-metrics' },
+        metric('Na empresa hoje', business.balanceCents, 'in'),
+        metric('Recebido no mês', business.incomeCents),
+        metric('Retirado para mim', business.withdrawalsCents)
+      ),
+      section('Dinheiro da empresa', 'Receber de um cliente é uma entrada. Retirar para sua conta pessoal é uma transferência.',
+        business.accounts.length ? h('div', { className: 'nf-card-grid' }, business.accounts.map(accountTile)) : empty('Cadastre a conta da empresa', 'Ela aparece como um cartão próprio, com saldo separado do seu dinheiro pessoal.'),
+        btn('Conta da empresa', () => open('account', { scope: 'business' }), 'primary', 'plus')
+      ),
+      section('Movimentações da empresa', 'Entradas, despesas, aportes e retiradas.',
+        s.entries.filter(e => e.status === 'posted' && e.date.startsWith(month) && (entryScope(s, e) === 'business' || (e.type === 'transfer' && s.accounts.find(a => a.id === e.toAccountId)?.scope === 'business'))).reverse().map(e =>
+          row(e.description, e.type === 'transfer' ? `${accountName(s, e.accountId)} → ${accountName(s, e.toAccountId)}` : accountName(s, e.accountId), e.amountCents)
+        )
+      )
+    );
+    if(tab==='contracts') body = debtView();
+    if(tab==='pension') body = pensionView();
+    if(tab==='recurring') body = recurringView();
+    if(tab==='accounts') body = h(React.Fragment, {},
+      section('Suas contas e dinheiro em mãos', 'Cada conta bancária reúne seu saldo e seus cartões vinculados.',
+        s.accounts.length ? h('div', { className: 'nf-card-grid' }, s.accounts.map(accountTile)) : noAccounts(),
+        h('div', { className: 'nf-actions' },
+          btn('Conta pessoal', () => open('account', { scope: 'personal' }), 'small', 'plus'),
+          btn('Conta da empresa', () => open('account', { scope: 'business' }), 'primary small', 'plus')
+        )
+      ),
+      section('Cartões sem conta vinculada', 'Vincule um cartão existente a uma conta bancária ou mantenha um cartão independente.',
+        s.cards.filter(c => !c.accountId).length
+          ? s.cards.filter(c => !c.accountId).map(c => row(c.name, cardBank(s, c) + ' · ' + SCOPES[c.scope], undefined, btn('Editar / vincular', () => open('card', { item: c }), 'small')))
+          : muted(s.cards.length ? 'Todos os seus cartões estão vinculados a contas.' : 'Nenhum cartão cadastrado ainda.'),
+        btn('Adicionar cartão', () => open('card'), 'small', 'plus')
+      ),
+      section('Faturas dos cartões', 'Todos os meses. Compras e parcelas ficam no cartão; pagar a fatura não repete o gasto.',
+        invoices(s).length
+          ? invoices(s).map(i =>
+              h('div', { key: i.key },
+                row(i.name, 'Vencimento ' + new Date(i.date + 'T12:00:00').toLocaleDateString('pt-BR') + ' · ' + SCOPES[i.scope], i.remainingCents, i.remainingCents > 0 ? btn('Pagar', () => open('invoice', { item: i }), 'small') : badge('Quitada', 'success')),
+                h('details', {},
+                  h('summary', {}, 'Composição da fatura'),
+                  i.items.map((item, n) => row(item.description, item.installment ? 'Parcela ' + item.installment : 'Saldo trazido para o controle', item.amountCents)),
+                  row('Total da fatura', '', i.totalCents),
+                  row('Pagamentos confirmados', '', i.paidCents),
+                  row('Saldo em aberto', '', i.remainingCents)
+                )
+              )
+            )
+          : empty('Sem faturas cadastradas', 'Configure o fechamento e o vencimento ao cadastrar ou editar um cartão.')
+      )
+    );
+    if(tab==='commitments') body = commitmentsView();
+    if(tab==='history') body = historyView();
+    if(tab==='notifications') body = h(NotificationCenter, {});
 
     function modalView() {
       if(!modal)return null;
@@ -621,7 +802,60 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
       if(modal.kind==='delete-entry')return wrapper('Excluir registro',h('p',{className:'nf-hint full'},`Excluir “${item.description}” recalcula o saldo. Se for salário, os descontos e consignados vinculados a esse recebimento também serão reabertos.`),()=>persist(state=>removePostedEntry(state,item.id)),undefined,'Excluir');
       return null;
     }
-    return h('div',{className:'nf-theme nf-workspace','data-theme':isDarkMode?'dark':'light'},h('header',{className:'nf-workspace-head'},h('div',{},h('p',{className:'nf-eyebrow'},'Sua vida financeira, conectada'),h('h1',{},'Minha carteira'),muted('Salário, empresa, contratos e compromissos no mesmo lugar.')),h('label',{className:'nf-month'},'Competência',h('input',{type:'month',value:month,min:'2000-01',max:'2200-12',onChange:e=>e.target.value&&setMonth(e.target.value)}))),h('nav',{className:'nf-tabs','aria-label':'Seções da carteira'},tabs.map(([id,label])=>h('button',{key:id,onClick:()=>setTab(id),'aria-current':tab===id?'page':undefined,className:tab===id?'active':''},label))),nw.error&&h(ConnectionNotice,{nw}),notice&&h('p',{className:'nf-notice',role:'status'},notice),!nw.loaded?empty('Carregando seu financeiro…','Aguarde a conexão com seu servidor.'):tab==='notifications'?h(NotificationCenter,{}):body,h(Presence,{},modalView()));
+    const currentLabel = tabs.find(([id]) => id === tab)?.[1] || 'Carteira';
+    return h('div', { className: 'nf-theme nf-workspace', 'data-theme': isDarkMode ? 'dark' : 'light' },
+      tab === 'overview'
+        ? h('header', { className: 'nf-workspace-head' },
+            h('div', {},
+              h('p', { className: 'nf-eyebrow' }, 'Sua vida financeira, conectada'),
+              h('h1', {}, 'Minha carteira'),
+              muted('Selecione um módulo para visualizar e gerenciar:')
+            ),
+            h('label', { className: 'nf-month' },
+              'Competência',
+              h('input', {
+                type: 'month',
+                value: month,
+                min: '2000-01',
+                max: '2200-12',
+                onChange: e => e.target.value && setMonth(e.target.value)
+              })
+            )
+          )
+        : h('header', { className: 'nf-workspace-head nf-module-head' },
+            h('div', { className: 'nf-module-nav' },
+              h('button', {
+                type: 'button',
+                className: 'nf-back-btn',
+                onClick: () => setTab('overview'),
+                'aria-label': 'Voltar para Carteira'
+              },
+                icon('arrowLeft'),
+                h('span', {}, 'Voltar para Carteira')
+              ),
+              h('button', {
+                type: 'button',
+                className: 'nf-module-badge-btn',
+                'aria-current': 'page',
+                onClick: () => {}
+              }, currentLabel)
+            ),
+            h('label', { className: 'nf-month' },
+              'Competência',
+              h('input', {
+                type: 'month',
+                value: month,
+                min: '2000-01',
+                max: '2200-12',
+                onChange: e => e.target.value && setMonth(e.target.value)
+              })
+            )
+          ),
+      nw.error && h(ConnectionNotice, { nw }),
+      notice && h('p', { className: 'nf-notice', role: 'status' }, notice),
+      !nw.loaded ? empty('Carregando seu financeiro…', 'Aguarde a conexão com seu servidor.') : body,
+      h(Presence, {}, modalView())
+    );
   }
 
   function DeductionForm({item,payrollId,initialKind='other',onClose,month,onSave}) {
