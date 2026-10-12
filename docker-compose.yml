@@ -1,11 +1,8 @@
-version: '3.8'
-
 services:
   nwallet:
     build:
       context: .
       dockerfile: Dockerfile
-    image: iamdksp/nwallet:latest
     container_name: nwallet-app
     network_mode: "bridge"
     restart: unless-stopped
