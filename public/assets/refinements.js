@@ -300,6 +300,88 @@
   }
 
   // ------------------------------------------------------------------------
+  // MOBILE DOCK AUTO-HIDE & AUTO-SHOW (SCROLL & GESTURE ENGINE)
+  // ------------------------------------------------------------------------
+  let isDockHidden = false;
+  let scrollRAF = null;
+  let lastScrollTop = 0;
+  let touchStartY = null;
+  let touchStartX = null;
+
+  function setDockHidden(hidden) {
+    const dock = document.querySelector('nav.nw-mobile-dock') || document.querySelector('#root nav');
+    if (!dock) return;
+    if (isDockHidden === hidden) return;
+    isDockHidden = hidden;
+    dock.classList.toggle('nw-dock-hidden', hidden);
+    dock.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+  }
+
+  // 1. Passive captured scroll tracking across all scrollable containers & window
+  window.addEventListener('scroll', event => {
+    const target = event.target;
+    const currentY = (target && typeof target.scrollTop === 'number')
+      ? target.scrollTop
+      : (window.scrollY || document.documentElement.scrollTop || 0);
+
+    if (scrollRAF) cancelAnimationFrame(scrollRAF);
+    scrollRAF = requestAnimationFrame(() => {
+      const diff = currentY - lastScrollTop;
+
+      // Near top of screen: always visible
+      if (currentY <= 15) {
+        setDockHidden(false);
+      } else if (diff > 8 && currentY > 40) {
+        // Dragging/scrolling down into content -> hide bottom dock
+        setDockHidden(true);
+      } else if (diff < -8) {
+        // Dragging/scrolling up towards top -> show bottom dock
+        setDockHidden(false);
+      }
+      lastScrollTop = Math.max(0, currentY);
+    });
+  }, { passive: true, capture: true });
+
+  // 2. High-precision touch gesture detection (swipe physics)
+  document.addEventListener('touchstart', event => {
+    if (event.touches.length === 1) {
+      touchStartY = event.touches[0].clientY;
+      touchStartX = event.touches[0].clientX;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', event => {
+    if (touchStartY === null || event.touches.length !== 1) return;
+    const currentY = event.touches[0].clientY;
+    const currentX = event.touches[0].clientX;
+    const deltaY = currentY - touchStartY;
+    const deltaX = currentX - touchStartX;
+
+    // Trigger only on intentional vertical drags
+    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 12) {
+      if (deltaY < -10) {
+        // Swiping up -> scrolling down into content -> hide dock
+        setDockHidden(true);
+      } else if (deltaY > 10) {
+        // Swiping down -> scrolling up towards top -> show dock
+        setDockHidden(false);
+      }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    touchStartY = null;
+    touchStartX = null;
+  }, { passive: true });
+
+  // 3. Keep dock visible on tab selection or dialog interactions
+  document.addEventListener('click', event => {
+    if (event.target.closest('nav button') || event.target.closest('#ai-center-btn')) {
+      setDockHidden(false);
+    }
+  }, true);
+
+  // ------------------------------------------------------------------------
   // BESPOKE FACE ID, BIOMETRICS & SECURITY ENGINE
   // ------------------------------------------------------------------------
   const FACE_ID_ICON_SVG = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M4 16v2a2 2 0 0 0 2 2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M16 20h2a2 2 0 0 0 2-2v-2"/><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/><path d="M12 11v2"/></svg>';

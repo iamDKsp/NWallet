@@ -4,6 +4,7 @@ import {createNotificationUI} from './notifications-ui.mjs';
 import {payableReminders} from '../reminders.mjs';
 import {cardBank,linkCardAccount,upsertAccount} from '../finance.mjs';
 import {birthdaysOf,nextBirthdayOccurrence,birthdayAlerts,birthdayCalendarAppointments,DEFAULT_NOTIFY_DAYS} from '../birthdays.mjs';
+import {cartOf,cartSummary,CART_CATEGORIES,CART_PRIORITIES,upsertCartItem,toggleCartItemStatus,removeCartItem} from '../cart.mjs';
 import {buildCalendarItems} from '../agenda.mjs';
 import {createCalendarUI} from './calendar-ui.mjs';
 import {createCategorySpendingUI} from './category-spending.mjs';
@@ -17,7 +18,7 @@ export function walletErrorMessage(err) {
 }
 export function workspaceSection(search,requested) {
   const view=requested||new URLSearchParams(search).get('view');
-  return ['overview','debts','payroll','business','commitments','accounts','history','birthdays','notifications'].includes(view)?view:'overview';
+  return ['overview','debts','payroll','business','commitments','accounts','history','birthdays','cart','notifications'].includes(view)?view:'overview';
 }
 
 // Shared by the original dashboard, entry sheets and Wallet screen.
@@ -133,7 +134,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
     if(p.payrolls.length){const net=p.payrolls.filter(p=>p.active).reduce((v,p)=>v+payrollPreview(s,p,monthNow()).netCents,0);return `Líquido previsto do CLT: ${money(net)}. Saldo da empresa: ${money(company.balanceCents)}. Confira os contratos e vencimentos na Carteira.`;}
     return `Seu dinheiro está distribuído em ${s.accounts.length} conta(s). Cadastre o CLT e as contas recorrentes para enxergar os próximos compromissos.`;
   }
-  const paths={wallet:'M3 7h18v13H3z M3 7V4h15v3 M15 11h6v5h-6z',payroll:'M5 3h14v18H5z M9 7h6 M9 11h6 M9 15h3',business:'M3 21V7h18v14 M8 7V3h8v4 M7 11h2 M15 11h2 M7 15h2 M15 15h2 M10 21v-3h4v3',debt:'M12 3a9 9 0 1 0 9 9 M12 7v5l3 2',pension:'M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M17 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M2 21v-5a5 5 0 0 1 10 0v5 M14 21v-5a4 4 0 0 1 8 0v5',recurring:'M20 8a8 8 0 0 0-14-3L3 8 M3 3v5h5 M4 16a8 8 0 0 0 14 3l3-3 M16 16h5v5',plus:'M12 5v14 M5 12h14',close:'M6 6l12 12 M6 18 18 6',transfer:'M3 7h17l-4-4 M20 7l-4 4 M21 17H4l4-4 M4 17l4 4',check:'M5 12l4 4L19 6',card:'M3 5h18v14H3z M3 10h18 M6 15h4',birthday:'M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8 M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1 M2 21h20 M7 8v3 M12 8v3 M17 8v3 M7 4h.01 M12 4h.01 M17 4h.01',calendar:'M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M16 2v4 M8 2v4 M3 10h18'};
+  const paths={wallet:'M3 7h18v13H3z M3 7V4h15v3 M15 11h6v5h-6z',payroll:'M5 3h14v18H5z M9 7h6 M9 11h6 M9 15h3',business:'M3 21V7h18v14 M8 7V3h8v4 M7 11h2 M15 11h2 M7 15h2 M15 15h2 M10 21v-3h4v3',debt:'M12 3a9 9 0 1 0 9 9 M12 7v5l3 2',pension:'M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M17 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M2 21v-5a5 5 0 0 1 10 0v5 M14 21v-5a4 4 0 0 1 8 0v5',recurring:'M20 8a8 8 0 0 0-14-3L3 8 M3 3v5h5 M4 16a8 8 0 0 0 14 3l3-3 M16 16h5v5',plus:'M12 5v14 M5 12h14',close:'M6 6l12 12 M6 18 18 6',transfer:'M3 7h17l-4-4 M20 7l-4 4 M21 17H4l4-4 M4 17l4 4',check:'M5 12l4 4L19 6',card:'M3 5h18v14H3z M3 10h18 M6 15h4',birthday:'M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8 M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1 M2 21h20 M7 8v3 M12 8v3 M17 8v3 M7 4h.01 M12 4h.01 M17 4h.01',calendar:'M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z M16 2v4 M8 2v4 M3 10h18',cart:'M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6 M10 21a1 1 0 1 1-2 0 1 1 0 0 1 2 0 M21 21a1 1 0 1 1-2 0 1 1 0 0 1 2 0',external:'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6 M15 3h6v6 M10 14L21 3'};
   const icon=name=>h('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:paths[name]||paths.wallet}));
   const btn=(label,fn,kind='',ico)=>h('button',{type:'button',className:'nf-button '+kind,onClick:fn},ico&&icon(ico),label);
   const muted=text=>h('p',{className:'nf-muted'},text);
@@ -191,12 +192,13 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
     return h('div',{className:'nf-error nf-connection',role:'alert'},h('span',{},nw.error),h('button',{className:'nf-button',disabled:retrying||nw.saving,onClick:async()=>{setRetrying(true);try{await nw.refresh();}catch{}finally{setRetrying(false);}}},retrying?'Conectando…':'Tentar novamente'));
   }
   function HomeConnections({onOpen,isDarkMode=true}) {
-    const nw=useWallet(),p=plansOf(nw.state),business=businessSummary(nw.state,monthNow()),bList=birthdaysOf(nw.state);
+    const nw=useWallet(),p=plansOf(nw.state),business=businessSummary(nw.state,monthNow()),bList=birthdaysOf(nw.state),cSum=cartSummary(nw.state);
     const bNext=bList.map(b=>({...b,occ:nextBirthdayOccurrence(b,today())})).sort((a,b)=>a.occ.daysRemaining-b.occ.daysRemaining)[0];
     const openSection=view=>()=>{selectWorkspaceSection(view);onOpen?.();};
     return h('div',{className:'nf-theme nf-home-connections','data-theme':isDarkMode?'dark':'light'},
       nw.error&&h(ConnectionNotice,{nw}),
       h('button',{className:'nf-home-link','aria-label':'Abrir agenda',onClick:()=>document.querySelector('.nc-calendar')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})},icon('calendar'),h('span',{},h('strong',{},'Minha agenda'),h('small',{},'Compromissos e próximos dias')),icon('calendar')),
+      h('button',{className:'nf-home-link',onClick:openSection('cart')},icon('cart'),h('span',{},h('strong',{},'Carrinho'),h('small',{},cSum.pendingCount?`${cSum.pendingCount} a comprar · ${money(cSum.pendingEstimatedCents)}`:'Lista de compras')),icon('plus')),
       h('button',{className:'nf-home-link',onClick:openSection('payroll')},icon('payroll'),h('span',{},h('strong',{},'CLT e folha'),h('small',{},p.payrolls.length?`${p.payrolls.length} folha(s) cadastrada(s)`:'Salário, descontos e consignado')),icon('plus')),
       h('button',{className:'nf-home-link',onClick:openSection('business')},icon('business'),h('span',{},h('strong',{},'Minha empresa'),h('small',{},business.accounts.length?`${money(business.balanceCents)} · saldo da empresa`:'Recebimentos e retiradas')),icon('plus')),
       h('button',{className:'nf-home-link',onClick:openSection('birthdays')},icon('birthday'),h('span',{},h('strong',{},'Aniversários'),h('small',{},bNext?`${bNext.name} (${bNext.occ.daysRemaining===0?'Hoje!':`em ${bNext.occ.daysRemaining}d`})`:`${bList.length} cadastrado(s)`)),icon('plus')));
@@ -369,7 +371,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
     const close=()=>setModal(null);
     const persist=async fn=>{await nw.save(fn);setNotice('Salvo no seu financeiro.');};
     const monthItems=obligations(s,month),projection=cashProjection(s,month),business=businessSummary(s,month),actual=summary(s,month);
-    const tabs=[['overview','Visão geral'],['debts','Dívidas & Juros'],['birthdays','Aniversários'],['payroll','CLT e folha'],['business','Empresa'],['commitments','Compromissos'],['accounts','Contas'],['history','Registros'],['notifications','Notificações']];
+    const tabs=[['overview','Visão geral'],['debts','Dívidas & Juros'],['cart','Carrinho'],['birthdays','Aniversários'],['payroll','CLT e folha'],['business','Empresa'],['commitments','Compromissos'],['accounts','Contas'],['history','Registros'],['notifications','Notificações']];
     const agendaItems=[...monthItems,...invoices(s).filter(i=>i.date.startsWith(month)&&i.remainingCents>0).map(i=>({...i,name:'Fatura · '+i.name,kind:'invoice',type:'expense',amountCents:i.remainingCents}))].sort((a,b)=>a.date.localeCompare(b.date));
     const noAccounts=()=>empty('Comece pelas suas contas','Cadastre a conta que recebe seu salário, a conta da empresa e o dinheiro em mãos.');
     const totalDebt=p.debts.reduce((v,d)=>v+debtSchedule(s,d).filter(i=>!i.paid).reduce((a,i)=>a+i.amountCents,0),0);
@@ -430,6 +432,126 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
         btn('Novo Aniversário',()=>open('birthday'),'primary','plus')
       );
     }
+    function cartView() {
+      const list=cartOf(s);
+      const cSum=cartSummary(s);
+      const [statusFilter,setStatusFilter]=React.useState('all');
+      const [search,setSearch]=React.useState('');
+
+      const filtered=list.filter(item=>{
+        if(statusFilter==='pending'&&item.status==='bought')return false;
+        if(statusFilter==='bought'&&item.status!=='bought')return false;
+        if(search.trim()){
+          const q=search.trim().toLowerCase();
+          const matchName=item.name?.toLowerCase().includes(q);
+          const matchNotes=item.notes?.toLowerCase().includes(q);
+          const matchCat=item.category?.toLowerCase().includes(q);
+          if(!matchName&&!matchNotes&&!matchCat)return false;
+        }
+        return true;
+      });
+
+      return section('Carrinho & Compras Futuras','Guarde os itens que deseja comprar, links, fotos e valores estimados. Dê baixa a qualquer momento.',
+        h(React.Fragment,{},
+          h('div',{className:'nf-metrics'},
+            metric('A comprar (pendente)',`${cSum.pendingCount} item(ns) · ${money(cSum.pendingEstimatedCents)}`,'out'),
+            metric('Comprados (baixa dada)',`${cSum.boughtCount} item(ns) · ${money(cSum.boughtEstimatedCents)}`,'in'),
+            metric('Total estimado',money(cSum.totalEstimatedCents))
+          ),
+          h('div',{className:'nf-cart-toolbar'},
+            h('div',{className:'nf-actions nf-cart-filters'},
+              h('button',{
+                type:'button',
+                className:'nf-button small'+(statusFilter==='all'?' primary':''),
+                onClick:()=>setStatusFilter('all')
+              },`Todos (${list.length})`),
+              h('button',{
+                type:'button',
+                className:'nf-button small'+(statusFilter==='pending'?' primary':''),
+                onClick:()=>setStatusFilter('pending')
+              },`A comprar (${cSum.pendingCount})`),
+              h('button',{
+                type:'button',
+                className:'nf-button small'+(statusFilter==='bought'?' primary':''),
+                onClick:()=>setStatusFilter('bought')
+              },`Comprados (${cSum.boughtCount})`)
+            ),
+            h('div',{className:'nf-cart-search-box'},
+              h('input',{
+                type:'search',
+                className:'nf-cart-search-input',
+                placeholder:'Buscar no carrinho...',
+                value:search,
+                onChange:e=>setSearch(e.target.value)
+              })
+            ),
+            btn('Novo Item',()=>open('cart-item'),'primary small','plus')
+          ),
+          filtered.length?h('div',{className:'nf-cart-grid'},
+            filtered.map(item=>{
+              const isBought=item.status==='bought';
+              return h('article',{key:item.id,className:'nf-cart-card'+(isBought?' nf-cart-bought':'')},
+                h('div',{className:'nf-cart-header'},
+                  item.photo?h('img',{src:item.photo,alt:item.name,className:'nf-cart-photo'})
+                    :h('div',{className:'nf-cart-photo-fallback'},icon('cart')),
+                  h('div',{className:'nf-cart-title-box'},
+                    h('h3',{className:'nf-cart-title'},item.name),
+                    h('div',{className:'nf-cart-badges'},
+                      isBought?h('span',{className:'nf-badge success'},item.boughtAt?`✅ Comprado em ${item.boughtAt.split('-').reverse().join('/')}`:'✅ Comprado')
+                               :h('span',{className:'nf-badge warning'},'⏳ A comprar'),
+                      item.category&&h('span',{className:'nf-badge'},item.category),
+                      item.priority==='high'&&h('span',{className:'nf-badge critical'},'Alta prioridade'),
+                      item.priority==='low'&&h('span',{className:'nf-badge'},'Baixa prioridade')
+                    )
+                  ),
+                  h('div',{className:'nf-cart-price-box'},
+                    h('strong',{className:'nf-cart-price'},money(item.priceCents||0)),
+                    h('small',{className:'nf-muted'},'estimado')
+                  )
+                ),
+                item.notes&&h('p',{className:'nf-cart-notes'},item.notes),
+                h('div',{className:'nf-cart-actions'},
+                  item.url&&h('a',{
+                    href:item.url,
+                    target:'_blank',
+                    rel:'noopener noreferrer',
+                    className:'nf-button small nf-button-link'
+                  },icon('external'),'Abrir link'),
+                  isBought
+                    ?btn('Reabrir',async()=>{
+                        await persist(state=>toggleCartItemStatus(state,item.id));
+                        setNotice(`Item "${item.name}" reaberto.`);
+                      },'small quiet')
+                    :btn('Dar baixa',async()=>{
+                        await persist(state=>toggleCartItemStatus(state,item.id));
+                        setNotice(`"${item.name}" marcado como comprado!`);
+                      },'small primary','check'),
+                  btn('Lançar gasto',()=>open('entry',{
+                    type:'expense',
+                    defaults:{
+                      description:item.name,
+                      amountCents:item.priceCents||0,
+                      category:'Compras'
+                    }
+                  }),'small quiet'),
+                  btn('Editar',()=>open('cart-item',{item}),'small'),
+                  btn('Excluir',()=>open('delete-cart-item',{item}),'quiet small')
+                )
+              );
+            })
+          ):empty(
+            list.length?'Nenhum item encontrado':'Seu carrinho está vazio',
+            list.length?'Nenhum item corresponde ao filtro ou busca selecionada.':'Guarde aqui produtos, links e ideias de compras futuras para planejar seus gastos.',
+            'cart',
+            !list.length&&h('div',{style:{marginTop:'16px'}},btn('Adicionar primeiro item',()=>open('cart-item'),'primary','plus'))
+          ),
+          list.length?h('div',{className:'nf-actions',style:{marginTop:'20px'}},
+            btn('Adicionar mais um item',()=>open('cart-item'),'primary','plus')
+          ):null
+        ),
+        btn('Novo Item',()=>open('cart-item'),'primary','plus')
+      );
+    }
     function payrollView() {
       return section('Seu CLT e a folha','O que foi combinado, o que já vem descontado e o que chega na sua conta.',p.payrolls.length?h('div',{className:'nf-stack'},p.payrolls.map(pay=>{
         const run=p.payrollRuns.find(r=>r.payrollId===pay.id&&r.month===month),preview=run?{baseCents:run.baseCents,deductions:run.deductions,deductionCents:run.baseCents-run.netCents,netCents:run.netCents}:payrollPreview(s,pay,month);
@@ -440,8 +562,9 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
     function recurringView(){return section('Pensão e contas recorrentes','Valor fixo para o que você já conhece; valor a informar para o que muda a cada mês.',p.recurrences.length?h('div',{},p.recurrences.map(r=>row(r.name,`${r.type==='income'?'A receber':'A pagar'} · dia ${r.day} · ${accountName(s,r.accountId)} · ${r.active?'ativo':'pausado'}`,r.amountMode==='variable'?(r.amountCents?`Estimativa ${money(r.amountCents)}`:'Valor a informar'):r.amountCents,h('div',{className:'nf-actions'},btn('Editar',()=>open('recurrence',{item:r}),'quiet'),btn(r.active?'Pausar':'Ativar',()=>persist(state=>{const item=ensurePlans(state).recurrences.find(x=>x.id===r.id);item.active=!item.active;}).catch(err=>setNotice(err.message)),'quiet'))))):empty('Seus compromissos mensais','Cadastre pensão, aluguel, assinaturas, luz, internet ou recebimentos recorrentes.'),h('div',{className:'nf-actions'},btn('Pensão',()=>open('recurrence',{pension:true}),'small','pension'),btn('Recorrência',()=>open('recurrence'),'primary small','plus')));}
 
     let body;
-    if(tab==='overview')body=h(React.Fragment,{},h('div',{className:'nf-option-grid'},[['debts','debt','Dívidas & Juros','Simulador de amortização e ranking'],['birthdays','birthday','Aniversários','Datas especiais e lembretes'],['payroll','payroll','CLT e folha','Salário, descontos e líquido'],['business','business','Minha empresa','Saldo e retiradas pessoais'],['commitments','debt','Consignado e financiamento','Contratos e parcelas restantes'],['commitments','pension','Pensão','Na folha ou paga pela conta'],['commitments','recurring','Contas recorrentes','Fixas ou com valor a informar'],['accounts','wallet','Contas e saldos','Separe pessoal e empresa']].map(([id,i,title,text])=>h('button',{key:title,className:'nf-option',onClick:()=>setTab(id)},icon(i),h('strong',{},title),h('span',{},text)))),h('div',{className:'nf-metrics'},metric('Saldo nas contas',actual.balanceCents),metric('Parcelas restantes',totalDebt,'out'),metric('Previsto a pagar no mês',projection.unknown?(money(projection.pendingCents)+' + '+projection.unknown+' a informar'):projection.pendingCents,'out')),section('Agenda financeira',`Competência ${month} · ${projection.unknown} compromisso(s) com valor a informar. Consignados já estão dentro dos descontos do salário.`,agendaItems.length?agendaItems.map(i=>h('div',{key:i.key},renderObligation(i))):empty('Sua agenda começa pelos cadastros','Cadastre uma folha, contrato ou conta recorrente para ver os próximos compromissos.'),btn('Gasto avulso',()=>open('entry',{type:'expense'}),'small','plus')));
+    if(tab==='overview')body=h(React.Fragment,{},h('div',{className:'nf-option-grid'},[['debts','debt','Dívidas & Juros','Simulador de amortização e ranking'],['cart','cart','Carrinho','Lista de compras futuras e desejos'],['birthdays','birthday','Aniversários','Datas especiais e lembretes'],['payroll','payroll','CLT e folha','Salário, descontos e líquido'],['business','business','Minha empresa','Saldo e retiradas pessoais'],['commitments','debt','Consignado e financiamento','Contratos e parcelas restantes'],['commitments','pension','Pensão','Na folha ou paga pela conta'],['commitments','recurring','Contas recorrentes','Fixas ou com valor a informar'],['accounts','wallet','Contas e saldos','Separe pessoal e empresa']].map(([id,i,title,text])=>h('button',{key:title,className:'nf-option',onClick:()=>setTab(id)},icon(i),h('strong',{},title),h('span',{},text)))),h('div',{className:'nf-metrics'},metric('Saldo nas contas',actual.balanceCents),metric('Parcelas restantes',totalDebt,'out'),metric('Previsto a pagar no mês',projection.unknown?(money(projection.pendingCents)+' + '+projection.unknown+' a informar'):projection.pendingCents,'out')),section('Agenda financeira',`Competência ${month} · ${projection.unknown} compromisso(s) com valor a informar. Consignados já estão dentro dos descontos do salário.`,agendaItems.length?agendaItems.map(i=>h('div',{key:i.key},renderObligation(i))):empty('Sua agenda começa pelos cadastros','Cadastre uma folha, contrato ou conta recorrente para ver os próximos compromissos.'),btn('Gasto avulso',()=>open('entry',{type:'expense'}),'small','plus')));
     if(tab==='debts')body=h(DebtsView,{s,p,month});
+    if(tab==='cart')body=cartView();
     if(tab==='birthdays')body=birthdaysView();
     if(tab==='payroll')body=payrollView();
     if(tab==='business')body=h(React.Fragment,{},h('div',{className:'nf-metrics'},metric('Na empresa hoje',business.balanceCents,'in'),metric('Recebido no mês',business.incomeCents),metric('Retirado para mim',business.withdrawalsCents)),section('Dinheiro da empresa','Receber de um cliente é uma entrada. Retirar para sua conta pessoal é uma transferência.',business.accounts.length?h('div',{className:'nf-card-grid'},business.accounts.map(accountTile)):empty('Cadastre a conta da empresa','Ela aparece como um cartão próprio, com saldo separado do seu dinheiro pessoal.'),btn('Conta da empresa',()=>open('account',{scope:'business'}),'primary','plus')),section('Movimentações da empresa','Entradas, despesas, aportes e retiradas.',s.entries.filter(e=>e.status==='posted'&&e.date.startsWith(month)&&(entryScope(s,e)==='business'||(e.type==='transfer'&&s.accounts.find(a=>a.id===e.toAccountId)?.scope==='business'))).reverse().map(e=>row(e.description,e.type==='transfer'?`${accountName(s,e.accountId)} → ${accountName(s,e.toAccountId)}`:accountName(s,e.accountId),e.amountCents))));
@@ -453,6 +576,8 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
       if(!modal)return null;
       const item=modal.item;
       const wrapper=(title,children,action,hint,submit)=>h(Modal,{key:modal.key,title,onClose:close,onSubmit:action,hint,submit},children);
+      if(modal.kind==='cart-item')return h(CartItemForm,{key:modal.key,item,onClose:close,onSave:async data=>{await persist(state=>upsertCartItem(state,data));setNotice('Item do carrinho salvo.');}});
+      if(modal.kind==='delete-cart-item')return wrapper('Excluir do carrinho',h('p',{className:'nf-hint full'},`Deseja realmente remover "${item.name}" do seu carrinho?`),()=>persist(state=>removeCartItem(state,item.id)),undefined,'Excluir');
       if(modal.kind==='birthday')return h(BirthdayForm,{key:modal.key,item,onClose:close,onSave:async data=>{await persist(state=>{state.birthdays||=[];const i=state.birthdays.findIndex(x=>x.id===data.id);if(i<0)state.birthdays.push({...data,id:uid()});else state.birthdays[i]=data;});setNotice('Aniversário salvo.');}});
       if(modal.kind==='delete-birthday')return wrapper('Excluir aniversário',h('p',{className:'nf-hint full'},`Deseja realmente remover o aniversário de "${item.name}"?`),()=>persist(state=>{state.birthdays=(state.birthdays||[]).filter(x=>x.id!==item.id);}),undefined,'Excluir');
       if(modal.kind==='account')return h(AccountForm,{key:modal.key,item,scope:modal.scope,s,onClose:close,onSave:async fd=>{const account={...item,id:item?.id||uid(),name:fd.get('name').trim(),bank:fd.get('kind')==='bank'?(fd.get('bank')||'').trim():'',scope:fd.get('scope'),kind:fd.get('kind'),openingBalanceCents:cents(fd.get('balance')),openingDate:fd.get('date')};await persist(state=>upsertAccount(state,account));if(!item&&account.kind==='bank'){open('account-created',{account});return false;}}});
@@ -521,6 +646,143 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
   function RecurrenceForm({item,pension,s,month,onClose,onSave}) {
     const [type,setType]=React.useState(item?.type||'expense'),[mode,setMode]=React.useState(item?.amountMode||'fixed');
     return h(Modal,{title:pension?'Pensão paga pela conta':item?'Editar recorrência':'Conta ou recebimento recorrente',onClose,onSubmit:onSave,hint:'Previsões não alteram o saldo. A cada mês, confirme quando pagar ou receber. No modo variável, confirme o valor real.'},field('name','Descrição',inp('name',item?.name||(pension?'Pensão':''),'text',{required:true,maxLength:160}),true),field('type','Movimentação',h('select',{name:'type',value:type,onChange:e=>setType(e.target.value)},h('option',{value:'expense'},'Conta a pagar'),h('option',{value:'income'},'Recebimento previsto'))),field('amountMode','Valor',h('select',{name:'amountMode',value:mode,onChange:e=>setMode(e.target.value)},h('option',{value:'fixed'},'Fixo todo mês'),h('option',{value:'variable'},'Varia · informar a cada mês'))),field('amount',mode==='fixed'?'Valor mensal (R$)':'Estimativa (opcional, R$)',inp('amount',item?.amountCents?inputMoney(item.amountCents):'','text',{inputMode:'decimal',required:mode==='fixed',placeholder:'0,00'})),field('day','Dia do vencimento / recebimento',inp('day',item?.day||10,'number',{required:true,min:1,max:31})),field('accountId','Conta',sel('accountId',item?.accountId,accountOpts(s))),field('method','Forma de pagamento',sel('method',item?.paymentMethod||'pix',Object.entries(METHODS).filter(([k])=>k!=='credit'))),type==='expense'?field('category','Categoria',sel('category',item?.category||(pension?'Pensão':'Outros'),CATEGORIES.map(c=>[c,c]))):field('source','Origem',sel('source',item?.source||'company',Object.entries(SOURCES))),field('startMonth','Primeiro mês',inp('startMonth',item?.startMonth||month,'month',{required:true,min:'2000-01',max:'2200-12'})),field('endMonth','Último mês (opcional)',inp('endMonth',item?.endMonth||'','month',{min:'2000-01',max:'2200-12'})));
+  }
+  function CartItemForm({item,onClose,onSave}) {
+    const [photo,setPhoto]=React.useState(item?.photo||null);
+    const [name,setName]=React.useState(item?.name||'');
+    const [priceStr,setPriceStr]=React.useState(item?.priceCents?inputMoney(item.priceCents):'');
+    const [url,setUrl]=React.useState(item?.url||'');
+    const [category,setCategory]=React.useState(item?.category||'Geral');
+    const [priority,setPriority]=React.useState(item?.priority||'medium');
+    const [notes,setNotes]=React.useState(item?.notes||'');
+    const [isBought,setIsBought]=React.useState(item?.status==='bought');
+    const [boughtAt,setBoughtAt]=React.useState(item?.boughtAt||today());
+
+    function handlePhoto(e){
+      const file=e.target.files?.[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        const img=new Image();
+        img.onload=()=>{
+          const canvas=document.createElement('canvas');
+          const max=320;
+          let w=img.width,h=img.height;
+          if(w>h){if(w>max){h=Math.round(h*max/w);w=max;}}
+          else{if(h>max){w=Math.round(w*max/h);h=max;}}
+          canvas.width=w;canvas.height=h;
+          const ctx=canvas.getContext('2d');
+          ctx.drawImage(img,0,0,w,h);
+          setPhoto(canvas.toDataURL('image/jpeg',0.82));
+        };
+        img.src=ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    return h(Modal,{
+      title:item?'Editar item do carrinho':'Novo item no carrinho',
+      onClose,
+      onSubmit:async()=>{
+        if(!name.trim())throw new Error('Informe o nome do item.');
+        let priceCents=0;
+        if(priceStr.trim()){
+          try{priceCents=cents(priceStr);}
+          catch(e){throw new Error('Valor estimado inválido. Use um formato como 150,00.');}
+        }
+        let formattedUrl=url.trim();
+        if(formattedUrl&&!/^https?:\/\//i.test(formattedUrl)){
+          formattedUrl='https://'+formattedUrl;
+        }
+        await onSave({
+          id:item?.id,
+          name:name.trim(),
+          priceCents,
+          url:formattedUrl||null,
+          photo,
+          category,
+          priority,
+          notes:notes.trim()||null,
+          status:isBought?'bought':'pending',
+          boughtAt:isBought?boughtAt:null
+        });
+      },
+      hint:'Salve itens para compras futuras. Você pode dar baixa como comprado a qualquer momento.'
+    },
+      h('div',{className:'nf-field full'},
+        h('span',{},'Foto do produto (opcional)'),
+        h('div',{className:'nf-photo-uploader'},
+          photo?h('div',{className:'nf-photo-preview-box'},
+            h('img',{src:photo,alt:'Preview',className:'nf-photo-preview'}),
+            h('button',{type:'button',className:'nf-button small',onClick:()=>setPhoto(null)},'Remover foto')
+          ):h('div',{className:'nf-photo-placeholder'},
+            h('span',{},'🛍️ Nenhuma foto selecionada'),
+            h('label',{className:'nf-button small nf-upload-btn'},
+              'Escolher ou tirar foto',
+              h('input',{type:'file',accept:'image/*',onChange:handlePhoto,className:'hidden'})
+            )
+          )
+        )
+      ),
+      field('name','Nome do produto / item',h('input',{
+        name:'name',
+        value:name,
+        onChange:e=>setName(e.target.value),
+        required:true,
+        maxLength:160,
+        placeholder:'Ex.: Monitor 27 polegadas 4K, Tênis, Livro...'
+      }),true),
+      field('price','Valor estimado (R$)',h('input',{
+        name:'price',
+        value:priceStr,
+        onChange:e=>setPriceStr(e.target.value),
+        inputMode:'decimal',
+        placeholder:'0,00'
+      })),
+      field('url','Link para compra (URL)',h('input',{
+        name:'url',
+        value:url,
+        onChange:e=>setUrl(e.target.value),
+        type:'url',
+        placeholder:'https://exemplo.com.br/produto',
+        maxLength:2000
+      }),true),
+      field('category','Categoria',h('select',{
+        name:'category',
+        value:category,
+        onChange:e=>setCategory(e.target.value)
+      },CART_CATEGORIES.map(c=>h('option',{key:c,value:c},c)))),
+      field('priority','Prioridade',h('select',{
+        name:'priority',
+        value:priority,
+        onChange:e=>setPriority(e.target.value)
+      },Object.entries(CART_PRIORITIES).map(([k,l])=>h('option',{key:k,value:k},l)))),
+      field('notes','Observações / Detalhes',h('textarea',{
+        name:'notes',
+        value:notes,
+        onChange:e=>setNotes(e.target.value),
+        placeholder:'Loja, cor, tamanho, modelo, cupom de desconto...',
+        rows:2,
+        maxLength:500
+      }),true),
+      h('label',{className:'nf-check full'},
+        h('input',{
+          type:'checkbox',
+          checked:isBought,
+          onChange:e=>setIsBought(e.target.checked)
+        }),
+        'Já comprei este item (dar baixa como comprado)'
+      ),
+      isBought&&field('boughtAt','Data da compra',h('input',{
+        type:'date',
+        name:'boughtAt',
+        value:boughtAt,
+        onChange:e=>setBoughtAt(e.target.value),
+        required:true,
+        min:'2000-01-01',
+        max:'2200-12-31'
+      }))
+    );
   }
   function BirthdayForm({item,onClose,onSave}) {
     const [photo,setPhoto]=React.useState(item?.photo||null);

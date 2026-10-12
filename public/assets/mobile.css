@@ -9,11 +9,13 @@
   body {
     position: fixed !important;
     inset: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    height: 100dvh !important;
     min-height: 100% !important;
-    max-height: 100dvh !important;
     overflow: hidden !important;
     overscroll-behavior: none !important;
     touch-action: pan-y !important;
@@ -28,12 +30,17 @@
   #root {
     width: 100% !important;
     height: 100% !important;
-    height: 100dvh !important;
+    min-height: 100% !important;
     overflow: hidden !important;
     position: fixed !important;
     inset: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+    background-color: #05080d !important;
   }
 
   /* 2. Inertial Native Scrolling in Scroll Areas */

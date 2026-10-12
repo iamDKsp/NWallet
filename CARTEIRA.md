@@ -89,6 +89,17 @@ Acesse **Carteira → Aniversários** ou o atalho na Visão Geral. Cadastre amig
 - **Parabéns no WhatsApp:** atalho direto com 1 clique para felicitações com mensagem pronta.
 - **Integração com a Agenda:** aniversários aparecem no calendário do sistema com o ícone 🎂.
 
+## Carrinho e compras futuras
+
+Acesse **Carteira → Carrinho** ou o atalho rápido no Início. O módulo permite planejar e acompanhar compras futuras (wishlist/carrinho de compras planejadas):
+- **Itens com foto:** upload direto da câmera ou fototeca com compressão automática em Canvas (~20 KB), ou link direto para imagem.
+- **Link para compra:** salva a URL da loja ou produto, com atalho direto em 1 clique ("Abrir link") em nova aba.
+- **Valor estimado e métricas:** acompanhamento instantâneo do valor total a comprar (pendente), valor já comprado e total geral planejado.
+- **Dar baixa como comprado:** botão direto no card do produto para alternar entre "A comprar" e "Comprado" (com data da baixa) ou reabrir a qualquer momento.
+- **Lançar gasto:** atalho prático para registrar o item diretamente como despesa confirmada no financeiro da Carteira.
+- **Filtros e busca:** visualização rápida por "Todos", "A comprar (pendentes)" e "Comprados", além de pesquisa textual em tempo real, categorias e prioridades (Alta, Média, Baixa).
+- **CRUD completo:** crie, edite dados e fotos, ou exclua itens a qualquer momento.
+
 ## Persistência e desenvolvimento
 
 - O controle fica em `data/wallet.json`. A versão anterior fica em `data/wallet.previous.json`.

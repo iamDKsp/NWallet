@@ -1,5 +1,5 @@
 {
-  "revision": 1,
+  "revision": 4,
   "state": {
     "schemaVersion": 1,
     "accounts": [
@@ -66,7 +66,8 @@
             "amountCents": 2124,
             "description": "Sextacomdjroca (5/5)"
           }
-        ]
+        ],
+        "creditLimitCents": 10000
       },
       {
         "id": "card-nubank",
@@ -114,7 +115,8 @@
             "amountCents": 16353,
             "description": "Fatura Mar/27 (Pix Crédito Tarcisio 8/8 + Mp Joaopedro 12/12)"
           }
-        ]
+        ],
+        "creditLimitCents": 180000
       },
       {
         "id": "card-bb",
@@ -192,7 +194,8 @@
             "amountCents": 4622,
             "description": "Fatura Ago/27 (MercadoLivre 12/12)"
           }
-        ]
+        ],
+        "creditLimitCents": 500000
       }
     ],
     "entries": [],
@@ -310,6 +313,7 @@
       ],
       "recurrences": [],
       "payrollRuns": []
-    }
+    },
+    "cart": []
   }
 }

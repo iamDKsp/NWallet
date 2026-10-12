@@ -1,5 +1,6 @@
 // Values are integer centavos. Dates are local ISO calendar dates, never UTC timestamps.
 import {validateAppointments} from './agenda.mjs';
+import {validateCart} from './cart.mjs';
 export const SCOPES = { personal: 'Pessoal', business: 'Empresa' };
 export const METHODS = { pix: 'Pix', debit: 'Débito', cash: 'Dinheiro', boleto: 'Boleto', transfer: 'Transferência', credit: 'Crédito' };
 export const SOURCES = { clt: 'CLT', company: 'Empresa', other: 'Outros' };
@@ -43,7 +44,7 @@ export function splitAmount(amount, count) {
   const base = Math.floor(amount/count), remainder = amount % count;
   return Array.from({length:count},(_,i)=>base+(i<remainder?1:0));
 }
-export const emptyState = () => ({ schemaVersion: 1, accounts: [], cards: [], entries: [], birthdays: [], appointments: [] });
+export const emptyState = () => ({ schemaVersion: 1, accounts: [], cards: [], entries: [], birthdays: [], appointments: [], cart: [] });
 export function cardBank(s, card) {
   const account = s.accounts.find(a=>a.id===card.accountId);
   return account ? account.bank || account.name : card.display?.bank || card.name;
@@ -72,6 +73,7 @@ export function validateState(s) {
     assert(shortText(item.id) && !ids.has(item.id), 'Identificador inválido ou repetido.'); ids.add(item.id);
   }
   validateAppointments(s,ids);
+  validateCart(s,ids);
   for (const a of s.accounts) {
     assert(shortText(a.name) && Object.hasOwn(SCOPES,a.scope) && ['bank','cash'].includes(a.kind), 'Conta inválida.');
     assert(a.bank === undefined || (typeof a.bank === 'string' && a.bank.length <= 160), 'Banco inválido.');
