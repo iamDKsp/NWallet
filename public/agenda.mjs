@@ -98,6 +98,10 @@ export function dateToISO(date) {
   if(typeof date==='string')return date.slice(0,10);
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
+export function appointmentLink(location) {
+  if(!/^https?:\/\//i.test(location||''))return null;
+  try{return new URL(location).href;}catch{return null;}
+}
 export function buildCalendarItems(s,start,end,forecasts=[]) {
   const rows=appointmentOccurrences(s,start,end),forecastKeys=new Set(forecasts.map(f=>f.id));
   for(const item of forecasts){

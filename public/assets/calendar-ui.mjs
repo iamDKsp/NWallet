@@ -1,5 +1,5 @@
 import {today,addMonths,money,validDate} from '../finance.mjs';
-import {APPOINTMENT_KINDS,REPEATS,appointmentsOf,upsertAppointment,archiveAppointment,toggleAppointment,calendarDays,monthRange,navigateCalendar,shiftDays,weekStart,filterCalendarItems,localDateLabel,dayLabel} from '../agenda.mjs';
+import {APPOINTMENT_KINDS,REPEATS,appointmentsOf,upsertAppointment,archiveAppointment,toggleAppointment,calendarDays,monthRange,appointmentLink,navigateCalendar,shiftDays,filterCalendarItems,localDateLabel,dayLabel} from '../agenda.mjs';
 
 const paths={
   calendar:'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
@@ -14,6 +14,7 @@ const paths={
   arrow:'M5 12h14 M13 6l6 6-6 6',undo:'M9 5 4 10l5 5 M4 10h10a6 6 0 0 1 0 12'
 };
 const fullDate=date=>localDateLabel(date,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const months=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const sourceName=item=>item.source==='appointment'?APPOINTMENT_KINDS[item.kind]:item.source==='birthday'?'Aniversário':item.source==='financial'?(item.financialDirection==='income'?'A receber':'A pagar'):'Movimentação';
 const sourceIcon=item=>item.source==='birthday'?'birthday':['financial','transaction'].includes(item.source)?'financial':item.kind==='work'?'work':'calendar';
 
@@ -49,7 +50,7 @@ export function createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,s
     const byDate=React.useMemo(()=>{const map=new Map();for(const item of visible){if(!map.has(item.date))map.set(item.date,[]);map.get(item.date).push(item);}return map;},[items,filter,showCompleted]);
     const dayItems=byDate.get(selected)||[],monthItems=visible.filter(i=>i.date>=range.start&&i.date<=range.end);
     const nextItems=visible.filter(i=>i.date>selected&&i.date<=nextWeek&&!i.completed&&i.source!=='transaction').slice(0,3);
-    const pendingCount=items.filter(i=>i.source==='appointment'&&i.completed&&i.date===selected).length;
+    const completedCount=items.filter(i=>i.source==='appointment'&&i.completed&&i.date===selected).length;
     const open=(kind,item)=>{setError('');setModal({kind,item,key:Date.now()});};
     const close=()=>setModal(null);
     const choose=date=>{if(validDate(date)){setSelected(date);setError('');}};
@@ -84,17 +85,20 @@ export function createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,s
           Number.isSafeInteger(item.amountCents)&&h('span',{className:'nc-event-amount'},money(item.amountCents))),
         item.completed&&h('span',{className:'nc-done'},'Concluído'));
     }
-    const emptyDay=()=>h('div',{className:'nc-empty'},h('span',{className:'nc-empty-icon'},icon('calendar')),h('strong',{},filter==='all'||filter==='appointments'?'Seu dia está livre':'Nenhum evento neste filtro'),h('p',{},pendingCount&&!showCompleted?`${pendingCount} compromisso(s) concluído(s). Use “Concluídos” para ver.`:'Escolha outra data ou organize seu próximo compromisso.'),button('Adicionar compromisso',()=>open('new'),'subtle','plus'));
+    const emptyDay=()=>h('div',{className:'nc-empty'},h('span',{className:'nc-empty-icon'},icon('calendar')),h('strong',{},filter==='all'||filter==='appointments'?'Seu dia está livre':'Nenhum evento neste filtro'),h('p',{},completedCount&&!showCompleted?`${completedCount} compromisso(s) concluído(s). Use “Concluídos” para ver.`:'Escolha outra data ou organize seu próximo compromisso.'),button('Adicionar compromisso',()=>open('new'),'subtle','plus'));
 
     function modalView(){
       if(!modal)return null;
       const item=modal.item,original=item&&appointmentsOf(nw.state).find(a=>a.id===item.appointmentId);
+      if(modal.kind==='month')return h(Modal,{key:modal.key,title:'Escolher mês e ano',onClose:close,submit:'Ir para o mês',onSubmit:fd=>{const year=Number(fd.get('year')),month=Number(fd.get('month'));const next=addMonths(`${year}-${String(month).padStart(2,'0')}-01`,0,Number(selected.slice(8)));if(!validDate(next))throw new Error('Escolha um ano entre 2000 e 2200.');choose(next);}},
+        field('Mês da agenda',h('select',{name:'month',defaultValue:Number(selected.slice(5,7))},months.map((name,i)=>h('option',{key:name,value:i+1},name)))),
+        field('Ano da agenda',input('year',selected.slice(0,4),'number',{required:true,min:2000,max:2200,step:1})));
       if(modal.kind==='new'||modal.kind==='edit')return h(AppointmentForm,{key:modal.key,item:modal.kind==='edit'?original:undefined,date:selected,onClose:close,onSave:saveAppointment});
       if(modal.kind==='delete')return h(Modal,{key:modal.key,title:original.repeat==='none'?'Excluir compromisso':'Excluir série de compromissos',onClose:close,submit:'Excluir',onSubmit:async()=>{await nw.save(s=>archiveAppointment(s,original.id));setNotice({text:original.repeat==='none'?'Compromisso excluído.':'Série de compromissos excluída.',undoId:original.id});},hint:'Você poderá desfazer a exclusão no aviso da agenda.'},h('p',{className:'full nc-delete-copy'},original.repeat==='none'?`Excluir “${original.title}” da agenda?`:`Excluir todas as ocorrências de “${original.title}”, incluindo as futuras?`));
       return h(Modal,{key:modal.key,title:'Detalhes do evento',onClose:close,plain:true},h('div',{className:'nc-detail'},
         h('span',{className:'nc-detail-badge'},icon(sourceIcon(item)),sourceName(item)),h('h4',{},item.title.replace(/^🎂\s*/,'')),
         h('p',{},icon('calendar'),fullDate(item.date)),h('p',{},icon('clock'),item.time||'Sem horário marcado'),
-        item.location&&h('p',{},icon('pin'),item.location),item.repeat&&item.repeat!=='none'&&h('p',{},icon('repeat'),REPEATS[item.repeat]),
+        item.location&&h('p',{},icon('pin'),appointmentLink(item.location)?h('a',{href:appointmentLink(item.location),target:'_blank',rel:'noopener noreferrer'},item.location):item.location),item.repeat&&item.repeat!=='none'&&h('p',{},icon('repeat'),REPEATS[item.repeat]),
         Number.isSafeInteger(item.amountCents)&&h('strong',{className:'nc-detail-amount'},money(item.amountCents)),
         (item.notes||item.description)&&h('p',{className:'nc-detail-notes'},item.notes||item.description),
         item.source==='appointment'?h('div',{className:'nc-detail-actions'},
@@ -109,12 +113,12 @@ export function createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,s
         notice&&h('div',{className:'nc-notice',role:'status'},h('span',{},icon('check'),notice.text),notice.undoId&&button('Desfazer',()=>mutate(s=>archiveAppointment(s,notice.undoId,false),'Compromisso restaurado.'),'quiet','undo',{disabled:nw.saving}),h('button',{type:'button',className:'nc-icon-button','aria-label':'Fechar aviso',onClick:()=>setNotice(null)},icon('close'))),
         (error||nw.error)&&h('p',{className:'nc-error',role:'alert'},error||nw.error),
         h('div',{className:'nc-layout'},h('div',{className:'nc-date-panel'},
-          h('div',{className:'nc-month-nav'},h('label',{className:'nc-month-picker'},h('span',{},localDateLabel(selected,{month:'long'}),h('small',{},selected.slice(0,4))),icon('down'),h('input',{type:'month','aria-label':'Ir para mês',value:selected.slice(0,7),min:'2000-01',max:'2200-12',onChange:e=>{if(e.target.value)choose(addMonths(e.target.value+'-01',0,Number(selected.slice(8))));}})),
+          h('div',{className:'nc-month-nav'},h('button',{type:'button',className:'nc-month-picker','aria-label':'Escolher mês e ano',onClick:()=>open('month')},h('span',{},localDateLabel(selected,{month:'long'}),h('small',{},selected.slice(0,4))),icon('down')),
             h('div',{className:'nc-date-actions'},button('Hoje',()=>choose(today()),'today'),h('button',{type:'button',className:'nc-icon-button','aria-label':view==='week'?'Semana anterior':'Mês anterior',onClick:()=>choose(navigateCalendar(selected,view,-1))},icon('left')),h('button',{type:'button',className:'nc-icon-button','aria-label':view==='week'?'Próxima semana':'Próximo mês',onClick:()=>choose(navigateCalendar(selected,view,1))},icon('right')))),
           h('div',{className:'nc-view-switch','aria-label':'Visualização da agenda'},[['week','Semana'],['month','Mês'],['agenda','Agenda']].map(([id,label])=>h('button',{key:id,type:'button','aria-pressed':view===id,className:view===id?'active':'',onClick:()=>setView(id)},label))),
           view!=='agenda'&&h('div',{className:'nc-days '+view,ref:grid,'aria-label':view==='month'?'Dias do mês':'Dias da semana'},
             view==='month'&&['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map((label,i)=>h('span',{key:'weekday'+i,className:'nc-weekday','aria-hidden':true},label)),
-            days.map(date=>{const events=byDate.get(date)||[],sources=Array.from(new Set(events.map(i=>i.source==='transaction'?'financial':i.source))).slice(0,3);return h('button',{key:date,type:'button','data-date':date,'aria-label':`${fullDate(date)}${date===today()?', hoje':''}, ${events.length} evento${events.length===1?'':'s'}`,'aria-pressed':date===selected,'aria-current':date===today()?'date':undefined,className:'nc-day'+(date===selected?' selected':'')+(date===today()?' is-today':'')+(date.slice(0,7)!==selected.slice(0,7)?' outside':''),onClick:()=>choose(date),onKeyDown:e=>{const step={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7}[e.key];if(step!==undefined){e.preventDefault();const next=shiftDays(date,step);focusDate.current=next;choose(next);}}},
+            days.map(date=>{const events=byDate.get(date)||[],sources=Array.from(new Set(events.map(i=>i.source==='transaction'?'financial':i.source))).slice(0,3);return h('button',{key:date,type:'button',disabled:!validDate(date),'data-date':date,'aria-label':`${fullDate(date)}${date===today()?', hoje':''}, ${events.length} evento${events.length===1?'':'s'}`,'aria-pressed':date===selected,'aria-current':date===today()?'date':undefined,className:'nc-day'+(date===selected?' selected':'')+(date===today()?' is-today':'')+(date.slice(0,7)!==selected.slice(0,7)?' outside':''),onClick:()=>choose(date),onKeyDown:e=>{const step={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7}[e.key];if(step!==undefined){e.preventDefault();const next=shiftDays(date,step);focusDate.current=next;choose(next);}}},
               view==='week'&&h('span',{className:'nc-day-weekday'},localDateLabel(date,{weekday:'short'}).replace('.','')),h('span',{className:'nc-day-number'},Number(date.slice(8))),h('span',{className:'nc-day-dots','aria-hidden':true},sources.map(source=>h('i',{key:source,className:source}))));})),
           h('div',{className:'nc-calendar-legend','aria-label':'Legenda'},h('span',{},h('i',{className:'appointment'}),'Compromissos'),h('span',{},h('i',{className:'financial'}),'Financeiro'),h('span',{},h('i',{className:'birthday'}),'Aniversários')),
           h('div',{className:'nc-filters'},h('label',{},h('span',{},'Exibir'),h('select',{'aria-label':'Filtrar eventos',value:filter,onChange:e=>setFilter(e.target.value)},[['all','Todos os eventos'],['appointments','Meus compromissos'],['finance','Financeiro'],['birthdays','Aniversários']].map(([value,label])=>h('option',{key:value,value},label)))),button('Concluídos',()=>setShowCompleted(!showCompleted),showCompleted?'completed-filter active':'completed-filter','check',{'aria-pressed':showCompleted})),

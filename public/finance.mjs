@@ -199,6 +199,33 @@ export function summary(s, month, scope='all', asOf=today()) {
   return {incomeCents,expenseCents,payableCents,receivableCents,balanceCents,categories,debtCents,cardDebtCents};
 }
 
+export function categorySpending(s,month,scope='all',asOf=today()) {
+  assert(validMonth(month)&&validDate(asOf),'Período dos gastos inválido.');
+  assert(scope==='all'||Object.hasOwn(SCOPES,scope),'Contexto dos gastos inválido.');
+  const expenses=s.entries.filter(e=>e.type==='expense'&&e.status==='posted'&&e.date<=asOf&&e.date.startsWith(month)&&(scope==='all'||entryScope(s,e)===scope));
+  const groups=new Map();
+  for(const entry of expenses){
+    const name=CATEGORIES.includes(entry.category)?entry.category:'Outros';
+    if(!groups.has(name))groups.set(name,{name,amountCents:0,count:0,entries:[]});
+    const category=groups.get(name);category.amountCents+=entry.amountCents;category.count++;category.entries.push(entry);
+  }
+  const categories=[...groups.values()].sort((a,b)=>b.amountCents-a.amountCents||a.name.localeCompare(b.name,'pt-BR'));
+  const totalCents=categories.reduce((sum,c)=>sum+c.amountCents,0);
+  if(totalCents){
+    // Largest remainders: displayed integer percentages total exactly 100%.
+    const denominator=BigInt(totalCents);
+    const remainders=categories.map((category,index)=>{
+      const numerator=BigInt(category.amountCents)*100n;
+      category.percent=Number(numerator/denominator);category.share=category.amountCents/totalCents*100;
+      category.entries.sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
+      return {index,remainder:numerator%denominator};
+    }).sort((a,b)=>a.remainder===b.remainder?a.index-b.index:a.remainder>b.remainder?-1:1);
+    const remaining=100-categories.reduce((sum,c)=>sum+c.percent,0);
+    for(let i=0;i<remaining;i++)categories[remainders[i].index].percent++;
+  }
+  return {month,scope,totalCents,count:expenses.length,categories};
+}
+
 export const newPlans = () => ({payrolls:[],debts:[],recurrences:[],payrollRuns:[]});
 export const plansOf = s => s.plans || newPlans();
 export const ensurePlans = s => (s.plans ||= newPlans());

@@ -70,6 +70,13 @@ const pie=requireAt('pie=({'),data=requireAt('d=[',pie)+2,end=closing(data);
 s=s.slice(0,data)+'nwFinance.weeklyData(r)'+s.slice(end+1);
 replaceExact('h=Math.max(...d.map(O=>O.amount))','h=Math.max(1,...d.map(O=>O.amount))');
 replaceExact('children:"R$98,60"','children:nwFinance.spentToday(r)');
+// Category details read the persisted ledger; remove legacy fallback amounts and insights.
+const categoryMathStart=requireAt(',p=O=>{',requireAt('pie=({'));
+const categoryMathEnd=requireAt(';return b.jsxs',categoryMathStart);
+s=s.slice(0,categoryMathStart)+s.slice(categoryMathEnd);
+const categoryPanelStart=requireAt('children:b.jsxs("div",{className:`p-5 rounded-[28px]',requireAt('pie=({'));
+const categoryPanelEnd=closing(s.indexOf('(',categoryPanelStart));
+s=s.slice(0,categoryPanelStart)+'children:b.jsx(nwFinance.CategorySpending,{isDarkMode:n})'+s.slice(categoryPanelEnd+1);
 s=s.replaceAll('Math.max(10, Math.min(100, bt / 5e3 * 100))','Math.max(0, Math.min(100, bt / 5e3 * 100))').replaceAll('Math.max(10,Math.min(100,bt/5e3*100))','Math.max(0,Math.min(100,bt/5e3*100))');
 replaceExact('children: "+R$ 4.200,00"','children: nwFinance.money(nwFinance.summary(nw.state).incomeCents)');
 replaceExact('children: "-R$ 1.323,10"','children: nwFinance.money(nwFinance.summary(nw.state).expenseCents)');

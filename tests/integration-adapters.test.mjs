@@ -1,8 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createFinanceIntegration,walletErrorMessage} from '../public/assets/finance-integration.mjs';
+import {createFinanceIntegration,walletErrorMessage,workspaceSection} from '../public/assets/finance-integration.mjs';
 import {emptyState,today,newPlans} from '../public/finance.mjs';
 const integration=createFinanceIntegration({createElement:()=>null},null,null);
+test('calendar links open the requested wallet section and preserve birthday deep links',()=>{
+  assert.equal(workspaceSection('?view=birthdays'),'birthdays');assert.equal(workspaceSection('?view=notifications','accounts'),'accounts');
+  const previousLocation=globalThis.location;globalThis.location={search:''};
+  const React={createElement:(type,props,...children)=>({type,props:props||{},children}),useState:value=>[typeof value==='function'?value():value,()=>{}],useEffect:()=>{}};
+  const wallet=createFinanceIntegration(React,null,null);wallet.selectWorkspaceSection('accounts');
+  try{
+    const tree=wallet.Workspace({});const selected=[];
+    function visit(node){if(Array.isArray(node))return node.forEach(visit);if(!node||typeof node!=='object')return;if(node.type==='button'&&node.props['aria-current']==='page')selected.push(...node.children);node.children?.forEach(visit);}
+    visit(tree);assert.deepEqual(selected,['Contas']);
+  }finally{globalThis.location=previousLocation;}
+});
 test('wallet reconnects after a network failure without writing or clearing saved data',async()=>{
   const originalFetch=globalThis.fetch;
   let current,offline=true,calls=[];

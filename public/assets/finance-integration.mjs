@@ -6,10 +6,15 @@ import {cardBank,linkCardAccount,upsertAccount} from '../finance.mjs';
 import {birthdaysOf,nextBirthdayOccurrence,birthdayAlerts,birthdayCalendarAppointments,DEFAULT_NOTIFY_DAYS} from '../birthdays.mjs';
 import {buildCalendarItems} from '../agenda.mjs';
 import {createCalendarUI} from './calendar-ui.mjs';
+import {createCategorySpendingUI} from './category-spending.mjs';
 
 export function walletErrorMessage(err) {
   if(err instanceof TypeError && /fetch|network|load failed/i.test(err.message))return 'Não foi possível conectar ao servidor local. Verifique se o NWallet está iniciado e tente novamente.';
   return err.message;
+}
+export function workspaceSection(search,requested) {
+  const view=requested||new URLSearchParams(search).get('view');
+  return ['overview','payroll','business','commitments','accounts','history','birthdays','notifications'].includes(view)?view:'overview';
 }
 
 // Shared by the original dashboard, entry sheets and Wallet screen.
@@ -18,6 +23,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
   let pendingWorkspaceTab;
   const selectWorkspaceSection=view=>{pendingWorkspaceTab=view;};
   const {Calendar}=createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,selectWorkspaceSection,createPortal});
+  const {CategorySpending}=createCategorySpendingUI(React,{useWallet});
   const {NotificationCenter,NotificationModal}=createNotificationUI(React,{useWallet,Modal,Presence});
   let snapshot={state:emptyState(),revision:0,loaded:false,saving:false,error:''},boot;
   const listeners=new Set();
@@ -214,7 +220,8 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
 
   function Workspace({isDarkMode=true}) {
     const nw=useWallet(),s=nw.state,p=plansOf(s);
-    const [tab,setTab]=React.useState(()=>new URLSearchParams(location.search).get('view')==='notifications'?'notifications':new URLSearchParams(location.search).get('view')==='birthdays'?'birthdays':'overview'),[month,setMonth]=React.useState(monthNow()),[modal,setModal]=React.useState(null),[notice,setNotice]=React.useState('');
+    const [tab,setTab]=React.useState(()=>workspaceSection(location.search,pendingWorkspaceTab)),[month,setMonth]=React.useState(monthNow()),[modal,setModal]=React.useState(null),[notice,setNotice]=React.useState('');
+    React.useEffect(()=>{pendingWorkspaceTab=undefined;},[]);
     const open=(kind,data={})=>{setNotice('');setModal({...data,kind,key:uid()});};
     const close=()=>setModal(null);
     const persist=async fn=>{await nw.save(fn);setNotice('Salvo no seu financeiro.');};
@@ -426,5 +433,5 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
       )
     );
   }
-  return {useWallet,Workspace,Calendar,calendarItems,CardModal,TransactionModal,HomeConnections,NotificationModal,NotificationCenter,reminderCount:s=>payableReminders(s).length,transactions,legacyCards,balance,weeklyData,spentToday,calendarAppointments,currentAppointments:date=>calendarAppointments(snapshot.state,date),calendarTransactions:rows=>rows,statisticsRows,monthWeeks,insight,budget:s=>summary(s,monthNow()).expenseCents+commitmentSummary(s,monthNow()).expenseCents,monthLabel:()=>new Date(today()+'T12:00:00').toLocaleDateString('pt-BR',{month:'long'}),summary:s=>summary(s,monthNow()),money,saveCard,deleteCard};
+  return {useWallet,Workspace,CategorySpending,Calendar,calendarItems,selectWorkspaceSection,CardModal,TransactionModal,HomeConnections,NotificationModal,NotificationCenter,reminderCount:s=>payableReminders(s).length,transactions,legacyCards,balance,weeklyData,spentToday,calendarAppointments,currentAppointments:date=>calendarAppointments(snapshot.state,date),calendarTransactions:rows=>rows,statisticsRows,monthWeeks,insight,budget:s=>summary(s,monthNow()).expenseCents+commitmentSummary(s,monthNow()).expenseCents,monthLabel:()=>new Date(today()+'T12:00:00').toLocaleDateString('pt-BR',{month:'long'}),summary:s=>summary(s,monthNow()),money,saveCard,deleteCard};
 }
