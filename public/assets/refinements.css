@@ -456,12 +456,11 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
     pointer-events: none !important;
     visibility: hidden !important;
   }
-  .nw-mobile-dock > div { height: 56px; }
-  .nw-mobile-dock button[data-nav-label] { height: 54px; flex-direction: column; gap: 3px; }
-  .nw-mobile-dock button[data-nav-label]::after { content: attr(data-nav-label); font-size: 9px; line-height: 12px; font-weight: 600; letter-spacing: .01em; position: relative; z-index: 1; }
-  .nw-mobile-dock button[aria-current="page"]::after { color: #81c784; }
-  .nw-mobile-dock button[aria-current="page"] > .absolute { width: 36px; height: 36px; top: 2px; }
-  .nw-mobile-dock button[data-nav-label]::after { white-space: nowrap; }
+  .nw-mobile-dock > div { height: 46px; }
+  .nw-mobile-dock button[data-nav-label] { height: 44px; flex-direction: row; gap: 0; justify-content: center; align-items: center; }
+  .nw-mobile-dock button[data-nav-label]::after { display: none !important; content: none !important; }
+  .nw-mobile-dock button[aria-current="page"]::after { display: none !important; content: none !important; }
+  .nw-mobile-dock button[aria-current="page"] > .absolute { width: 40px; height: 40px; top: 2px; }
   #root svg[viewBox="0 0 280 140"] { max-width: calc(100vw - 48px); height: auto; }
   .nw-entry-panel { height: min(90dvh, 850px) !important; }
   .nw-entry-panel > div:has(> form) { padding-left: 24px; padding-right: 24px; padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }

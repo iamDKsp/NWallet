@@ -192,15 +192,12 @@ export function createFinanceIntegration(React,motion,Presence,createPortal,visu
     return h('div',{className:'nf-error nf-connection',role:'alert'},h('span',{},nw.error),h('button',{className:'nf-button',disabled:retrying||nw.saving,onClick:async()=>{setRetrying(true);try{await nw.refresh();}catch{}finally{setRetrying(false);}}},retrying?'Conectando…':'Tentar novamente'));
   }
   function HomeConnections({onOpen,isDarkMode=true}) {
-    const nw=useWallet(),p=plansOf(nw.state),business=businessSummary(nw.state,monthNow()),bList=birthdaysOf(nw.state),cSum=cartSummary(nw.state);
+    const nw=useWallet(),bList=birthdaysOf(nw.state);
     const bNext=bList.map(b=>({...b,occ:nextBirthdayOccurrence(b,today())})).sort((a,b)=>a.occ.daysRemaining-b.occ.daysRemaining)[0];
     const openSection=view=>()=>{selectWorkspaceSection(view);onOpen?.();};
     return h('div',{className:'nf-theme nf-home-connections','data-theme':isDarkMode?'dark':'light'},
       nw.error&&h(ConnectionNotice,{nw}),
       h('button',{className:'nf-home-link','aria-label':'Abrir agenda',onClick:()=>document.querySelector('.nc-calendar')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})},icon('calendar'),h('span',{},h('strong',{},'Minha agenda'),h('small',{},'Compromissos e próximos dias')),icon('calendar')),
-      h('button',{className:'nf-home-link',onClick:openSection('cart')},icon('cart'),h('span',{},h('strong',{},'Carrinho'),h('small',{},cSum.pendingCount?`${cSum.pendingCount} a comprar · ${money(cSum.pendingEstimatedCents)}`:'Lista de compras')),icon('plus')),
-      h('button',{className:'nf-home-link',onClick:openSection('payroll')},icon('payroll'),h('span',{},h('strong',{},'CLT e folha'),h('small',{},p.payrolls.length?`${p.payrolls.length} folha(s) cadastrada(s)`:'Salário, descontos e consignado')),icon('plus')),
-      h('button',{className:'nf-home-link',onClick:openSection('business')},icon('business'),h('span',{},h('strong',{},'Minha empresa'),h('small',{},business.accounts.length?`${money(business.balanceCents)} · saldo da empresa`:'Recebimentos e retiradas')),icon('plus')),
       h('button',{className:'nf-home-link',onClick:openSection('birthdays')},icon('birthday'),h('span',{},h('strong',{},'Aniversários'),h('small',{},bNext?`${bNext.name} (${bNext.occ.daysRemaining===0?'Hoje!':`em ${bNext.occ.daysRemaining}d`})`:`${bList.length} cadastrado(s)`)),icon('plus')));
   }
 

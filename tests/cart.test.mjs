@@ -157,7 +157,7 @@ test('removeCartItem deletes an item from the cart', () => {
   assert.throws(() => removeCartItem(s, 'non-existent'), /Item do carrinho não encontrado/);
 });
 
-test('workspaceSection handles ?view=cart and HomeConnections triggers Carrinho section', async () => {
+test('workspaceSection handles ?view=cart and selectWorkspaceSection activates Carrinho section', async () => {
   const {createFinanceIntegration,workspaceSection} = await import('../public/assets/finance-integration.mjs');
   assert.equal(workspaceSection('?view=cart'), 'cart');
 
@@ -176,15 +176,8 @@ test('workspaceSection handles ?view=cart and HomeConnections triggers Carrinho 
   const prior = globalThis.location;
   globalThis.location = { search: '' };
   try {
-    let opened = 0;
     const wallet = createFinanceIntegration(React, null, null);
-    const home = wallet.HomeConnections({ onOpen: () => opened++ });
-    const cartButton = nodes(home).find(n => n.type === 'button' && nodes(n).some(c => c.type === 'strong' && c.children.includes('Carrinho')));
-    assert.ok(cartButton, 'Carrinho button must exist in HomeConnections');
-
-    cartButton.props.onClick();
-    assert.equal(opened, 1);
-
+    wallet.selectWorkspaceSection('cart');
     const workspace = wallet.Workspace({});
     const selected = nodes(workspace).find(n => n.type === 'button' && n.props['aria-current'] === 'page');
     assert.equal(selected.children[0], 'Carrinho');

@@ -60,10 +60,11 @@ const desktopBegin=requireAt(desktopWalletAnchor,requireAt('function bie()'))+'}
 const desktopEnd=closing(s.indexOf('(',desktopBegin));
 const cardView=s.slice(desktopBegin,desktopEnd+1).replace('children: "Minha Carteira"','children: "Meus cartões"');
 s=s.slice(0,desktopBegin)+'b.jsxs("div",{children:[b.jsx(nwFinance.Workspace,{isDarkMode:I}),'+cardView+']},"wallet")'+s.slice(desktopEnd+1);
-replaceExact('children:[b.jsx(pie,{','children:[b.jsx(nwFinance.HomeConnections,{isDarkMode:I,onOpen:()=>t("Wallet")}),b.jsx(pie,{');
-const desktopHome=requireAt('className: "desktop-container"',s.indexOf('else {',requireAt('function bie()')));
-const desktopChildren=requireAt('children: [',desktopHome)+'children: ['.length;
-s=s.slice(0,desktopChildren)+'b.jsx(nwFinance.HomeConnections,{isDarkMode:I,onOpen:()=>t("Wallet")}),'+s.slice(desktopChildren);
+const mobilePie=requireAt('children:[b.jsx(pie,{');
+const mobilePieEnd=closing(s.indexOf('(',mobilePie+'children:['.length));
+s=s.slice(0,mobilePieEnd+1)+',b.jsx(nwFinance.HomeConnections,{isDarkMode:I,onOpen:()=>t("Wallet")})'+s.slice(mobilePieEnd+1);
+const desktopCard1=requireAt('// Card 2: Transações Recentes',s.indexOf('else {',requireAt('function bie()')));
+s=s.slice(0,desktopCard1)+'b.jsx(nwFinance.HomeConnections,{isDarkMode:I,onOpen:()=>t("Wallet")}),\n\n                      '+s.slice(desktopCard1);
 
 // Original weekly gauge and statistics now use actual records in the shared wallet.
 const pie=requireAt('pie=({'),data=requireAt('d=[',pie)+2,end=closing(data);
