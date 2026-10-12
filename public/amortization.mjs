@@ -1,8 +1,23 @@
-import {monthNow} from './planning.mjs';
+import {monthNow,debtSchedule} from './planning.mjs';
+import {today,accountBalance,invoices,plansOf} from './finance.mjs';
+
+export function outstandingInstallments(state,debt) {
+  return debtSchedule(state||{entries:[],plans:{payrollRuns:[]}},debt).filter(i=>!i.paid);
+}
+
+export function debtAmounts(state,debt,month=monthNow()) {
+  const remaining=outstandingInstallments(state,debt),nominalCents=remaining.reduce((v,i)=>v+i.amountCents,0);
+  const quotedCents=remaining.length?debt.currentBalanceCents||0:0;
+  const warnings=[];
+  if(quotedCents>nominalCents)warnings.push('A quitação informada supera as parcelas restantes. Confira o valor e a data da cotação.');
+  else if(quotedCents===nominalCents&&quotedCents>0&&(debt.interestRateBps||debt.cetBps))warnings.push('A quitação informada coincide com o total das parcelas. Confira se foi informada uma cotação de quitação.');
+  if(quotedCents&&remaining.length<debt.installments)warnings.push('Há parcelas confirmadas após o cadastro. A cotação informada precisa ser conferida novamente.');
+  return {remaining,nominalCents,quotedCents,warnings,monthlyCents:remaining.filter(i=>i.month===month).reduce((v,i)=>v+i.amountCents,0)};
+}
 
 /**
  * Computes the Present Value (Valor Presente) of a future installment
- * under compound interest according to BACEN Resolution 3.516/2007.
+ * using a monthly compound-interest estimate, rounded per installment.
  *
  * @param {number} installmentCents - Amount of the installment in centavos
  * @param {number} rateBps - Monthly interest rate or CET in basis points (e.g. 498 for 4.98%)
@@ -33,11 +48,10 @@ export function simulateAmortization(debt, availableCents, options = {}) {
   }
   const refMonth = options.asOfMonth || monthNow();
   const rateBps = debt.interestRateBps || debt.cetBps || 0;
-  const count = debt.installments;
+  const schedule=outstandingInstallments(options.state,debt);
+  const count = schedule.length;
   const [refY, refM] = refMonth.split('-').map(Number);
 
-  // Parse first due date
-  const [startY, startM] = (debt.firstDueDate || (refMonth + '-01')).slice(0, 7).split('-').map(Number);
 
   let cash = Math.max(0, availableCents || 0);
   let totalNominalEliminatedCents = 0;
@@ -47,7 +61,7 @@ export function simulateAmortization(debt, availableCents, options = {}) {
   // Iterate from last installment to first (back to front)
   for (let idx = count - 1; idx >= 0; idx--) {
     // Determine the month of this installment
-    const installmentDate = new Date(startY, startM - 1 + idx, 1);
+    const installmentDate = new Date(schedule[idx].date+'T12:00:00');
     const instY = installmentDate.getFullYear();
     const instM = installmentDate.getMonth() + 1;
     const monthsAhead = Math.max(0, (instY - refY) * 12 + (instM - refM));
@@ -61,7 +75,7 @@ export function simulateAmortization(debt, availableCents, options = {}) {
       totalRealPaidCents += pv;
       totalNominalEliminatedCents += debt.installmentCents;
       eliminated.push({
-        number: idx + 1,
+        number: schedule[idx].number,
         monthsAhead,
         month: `${instY}-${String(instM).padStart(2, '0')}`,
         nominalCents: debt.installmentCents,
@@ -81,6 +95,8 @@ export function simulateAmortization(debt, availableCents, options = {}) {
     debtId: debt.id,
     debtName: debt.name,
     rateBps,
+    rateSource: debt.interestRateBps?'interest':debt.cetBps?'cet':'none',
+    asOfMonth:refMonth,
     totalInstallmentsRemaining: count,
     eliminatedCount: eliminated.length,
     remainingInstallments,
@@ -108,8 +124,8 @@ export function annualRateFromMonthly(monthlyRateBps) {
 }
 
 /**
- * Analyzes and ranks all liabilities (debts, overdraft, overdue cards)
- * according to the Avalanche method (highest interest cost first).
+ * Groups liabilities by observable status, then by known registered rates.
+ * An open invoice alone does not establish revolving-credit interest.
  *
  * @param {Array} debts - Array of debts from s.plans.debts
  * @param {Array} accounts - Array of accounts
@@ -117,100 +133,39 @@ export function annualRateFromMonthly(monthlyRateBps) {
  * @param {Array} [invoicesList] - Open invoices
  * @returns {Array} Ranked list of debts with recommendations
  */
-export function debtPriorityRanking(debtsOrState = [], accounts = [], cards = [], invoicesList = []) {
-  let debts = debtsOrState;
-  if (debtsOrState && !Array.isArray(debtsOrState) && typeof debtsOrState === 'object') {
-    const state = debtsOrState;
-    debts = state.plans?.debts || [];
-    accounts = accounts.length ? accounts : (state.accounts || []);
-    cards = cards.length ? cards : (state.cards || []);
-    invoicesList = invoicesList.length ? invoicesList : [];
+export function debtPriorityRanking(debtsOrState = [], accounts = [], cards = [], invoicesList = [], options = {}) {
+  const state=Array.isArray(debtsOrState)?options.state:debtsOrState;
+  const debts=state?plansOf(state).debts:debtsOrState;
+  const asOf=options.asOf||today();
+  if(state){accounts=state.accounts;cards=state.cards;if(!invoicesList.length)invoicesList=invoices(state,asOf);}
+  const items=[];
+  for(const acc of accounts) {
+    const balance=state?accountBalance(state,acc.id,asOf):acc.openingBalanceCents||0;
+    if(acc.kind!=='bank'||balance>=0)continue;
+    const rateBps=acc.overdraftRateBps||0;
+    items.push({id:'account:'+acc.id,type:'overdraft',name:'Saldo negativo · '+(acc.bank||acc.name),balanceCents:-balance,
+      monthlyRateBps:rateBps,annualRatePercent:annualRateFromMonthly(rateBps),urgency:'high',status:'Saldo negativo',
+      reason:rateBps?'Saldo atual negativo. Taxa de cheque especial informada no cadastro.':'Saldo atual negativo. Taxa de cheque especial não informada; confira o contrato.'});
   }
-  if (!Array.isArray(debts)) debts = [];
-  if (!Array.isArray(accounts)) accounts = [];
-  if (!Array.isArray(cards)) cards = [];
-  if (!Array.isArray(invoicesList)) invoicesList = [];
-
-  const items = [];
-
-  // 1. Cheque Especial (Overdraft)
-  for (const acc of accounts) {
-    if (acc.kind === 'bank') {
-      const balance = acc.openingBalanceCents || 0; // Or live balance
-      if (balance < 0) {
-        const rateBps = acc.overdraftRateBps || 800; // Standard 8.00% a.m.
-        items.push({
-          id: `account:${acc.id}`,
-          type: 'overdraft',
-          name: `Cheque Especial · ${acc.bank || acc.name}`,
-          balanceCents: Math.abs(balance),
-          monthlyRateBps: rateBps,
-          annualRatePercent: annualRateFromMonthly(rateBps),
-          urgency: 'critical',
-          reason: 'Cobrança diária de juros compostos altíssimos (~8% a.m.). Prioridade imediata de quitação.'
-        });
-      }
-    }
+  for(const inv of invoicesList) {
+    if(inv.remainingCents<=0)continue;
+    const overdue=Boolean(inv.date&&inv.date<asOf);
+    items.push({id:'invoice:'+inv.key,type:'card_invoice',name:'Fatura '+inv.name,balanceCents:inv.remainingCents,
+      date:inv.date,monthlyRateBps:0,annualRatePercent:0,urgency:overdue?'high':'medium',
+      status:overdue?'Em atraso':inv.date===asOf?'Vence hoje':'A vencer',
+      reason:overdue?'Fatura com vencimento anterior à data de hoje. Confira encargos e pagamento com o banco.':'Fatura a pagar no vencimento. Saldo aberto não comprova cobrança de rotativo.'});
   }
-
-  // 2. Cartões de crédito com atraso ou rotativo
-  for (const inv of invoicesList) {
-    // If invoice indicates overdue balance or high total
-    if (inv.remainingCents > 0) {
-      items.push({
-        id: `invoice:${inv.key}`,
-        type: 'card_invoice',
-        name: `Fatura ${inv.name}`,
-        balanceCents: inv.remainingCents,
-        monthlyRateBps: 1450, // Typical rotativo rate 14.5% a.m.
-        annualRatePercent: annualRateFromMonthly(1450),
-        urgency: 'critical',
-        reason: 'Rotativo de cartão possui juros que superam 400% ao ano. Quitação urgente evita bola de neve.'
-      });
-    }
+  for(const debt of debts||[]) {
+    const amounts=debtAmounts(state,debt,options.month||asOf.slice(0,7));
+    if(!amounts.remaining.length)continue;
+    const rateBps=debt.cetBps||debt.interestRateBps||0;
+    items.push({id:'debt:'+debt.id,type:debt.kind,debt,name:debt.name,creditor:debt.creditor||'',
+      balanceCents:amounts.quotedCents||amounts.nominalCents,quotedCents:amounts.quotedCents,
+      nominalRemainingCents:amounts.nominalCents,installmentCents:debt.installmentCents,
+      installmentsRemaining:amounts.remaining.length,monthlyRateBps:rateBps,annualRatePercent:annualRateFromMonthly(rateBps),
+      rateSource:debt.cetBps?'CET':'Juros',urgency:'medium',status:'Contrato',warnings:amounts.warnings,
+      reason:rateBps?'Compare o custo informado e as parcelas restantes. A simulação é uma estimativa.':'Taxa não informada. Compare condições e vencimentos do contrato.'});
   }
-
-  // 3. Contratos de Empréstimo e Financiamento
-  for (const debt of debts) {
-    const rateBps = debt.cetBps || debt.interestRateBps || (debt.kind === 'financing' ? 180 : 350);
-    const nominalRemainingCents = (debt.installmentCents || 0) * (debt.installments || 0);
-    const balanceCents = debt.currentBalanceCents || nominalRemainingCents;
-    
-    let urgency = 'medium';
-    let reason = 'Amortização de trás para frente reduz juros e adianta o término.';
-
-    if (debt.kind === 'payroll_loan' && rateBps >= 450) {
-      urgency = 'high';
-      reason = `Taxa alta para consignado (${(rateBps / 100).toFixed(2)}% a.m.). Amortizar as últimas parcelas gera economia massiva de juros.`;
-    } else if (debt.kind === 'financing') {
-      urgency = 'high';
-      reason = 'Financiamento com garantia de veículo. Manter sempre em dia para proteger o patrimônio.';
-    }
-
-    items.push({
-      id: `debt:${debt.id}`,
-      type: debt.kind,
-      debt,
-      name: debt.name,
-      creditor: debt.creditor || '',
-      balanceCents,
-      nominalRemainingCents,
-      installmentCents: debt.installmentCents,
-      installmentsRemaining: debt.installments,
-      monthlyRateBps: rateBps,
-      annualRatePercent: annualRateFromMonthly(rateBps),
-      urgency,
-      reason
-    });
-  }
-
-  // Sort by urgency ('critical' > 'high' > 'medium') then by monthlyRateBps descending
-  const urgencyWeight = { critical: 3, high: 2, medium: 1 };
-  items.sort((a, b) => {
-    const weightDiff = (urgencyWeight[b.urgency] || 0) - (urgencyWeight[a.urgency] || 0);
-    if (weightDiff !== 0) return weightDiff;
-    return (b.monthlyRateBps || 0) - (a.monthlyRateBps || 0);
-  });
-
-  return items;
+  const weights={high:2,medium:1};
+  return items.sort((a,b)=>weights[b.urgency]-weights[a.urgency]||b.monthlyRateBps-a.monthlyRateBps||(a.date||'').localeCompare(b.date||''));
 }

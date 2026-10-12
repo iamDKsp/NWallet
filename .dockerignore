@@ -13,3 +13,5 @@ yarn-error.log*
 .system_generated
 *.log
 README.md
+audit-preview
+relatorio-auditoria-*.md

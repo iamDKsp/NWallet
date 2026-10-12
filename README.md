@@ -71,5 +71,20 @@ Depois abra no navegador: **[http://localhost:3950](http://localhost:3950)**
 docker compose up -d --build
 ```
 
+### Atualizar o servidor com as correções financeiras
+
+As correções estão na branch `main`. Para uma stack conectada ao Git, atualize o repositório e refaça o deploy com reconstrução da imagem. O Dockerfile executa `npm run prepare:ui` durante o build, conectando as telas financeiras corrigidas à navegação de desktop e celular. Uma estrutura de interface incompatível interrompe o build em vez de publicar telas desconectadas.
+
+Se o deploy usa um checkout no servidor:
+
+```bash
+git pull --ff-only origin main
+docker compose up -d --build
+```
+
+Somente reiniciar o contêiner existente não aplica arquivos novos. Mantenha o volume `nwallet-data`, que armazena seus registros. Não é necessário recadastrar contas, faturas ou contratos.
+
+Esse deploy inclui a previsão mensal com faturas, próximos compromissos com datas e valores, estatísticas por período, composição das faturas e simulações que respeitam parcelas confirmadas. Valores de quitação informados pelo usuário permanecem preservados.
+
 A aplicação ficará disponível na porta `3950`:
 👉 `http://SEU_IP_DO_SERVIDOR:3950`

@@ -42,19 +42,25 @@ Uma compra no crédito entra nos gastos pelo valor total e distribui parcelas en
 
 Transferências movem os dois saldos e ficam fora dos totais de receitas/despesas. Os descontos da folha aparecem no detalhamento do CLT: o recebimento utilizado no saldo e nas estatísticas é o líquido. O salário bruto e os descontos não são somados novamente como movimentações bancárias.
 
-As estatísticas financeiras refletem os registros da competência atual; os controles antigos de períodos/metas ainda precisam de uma revisão funcional própria.
+Carteira e Estatísticas compartilham a competência selecionada. Estatísticas permite consultar os últimos sete dias da competência, o mês ou o ano, com séries calculadas pelos lançamentos confirmados. Transferências e pagamentos de fatura não viram despesas nesses gráficos. Meses vazios mostram um aviso, sem curvas de demonstração. O saldo exibido continua sendo o saldo atual, mesmo ao consultar registros de outra competência.
+
+A previsão de pagamentos da competência reúne compromissos pagos pela conta e faturas pendentes. Consignados ficam no salário líquido, sem uma segunda saída. O resumo distingue saídas já realizadas, valores ainda a pagar e compromissos sem valor informado. Em Contas, **Composição da fatura** mostra os saldos/parcelas que compõem o total e os pagamentos confirmados.
+
+Em **Dívidas & Juros**, os totais separam parcelas restantes, cotações de quitação informadas, faturas abertas e saldos negativos atuais. Faturas aparecem com seu vencimento e estado A vencer/Vence hoje/Em atraso; não recebem taxa presumida de rotativo. O simulador ignora parcelas confirmadas, identifica a taxa usada e a competência de referência e apresenta uma estimativa mensal, que não substitui uma cotação do credor. Cotações inconsistentes com as parcelas geram avisos e não são alteradas automaticamente.
 
 ## Gastos por categoria
 
 Abra **Ver gastos por categoria** no cartão de saldo. O painel soma somente despesas confirmadas no mês escolhido, com opção de separar **Pessoal** e **Empresa**. Compras no crédito entram pelo valor total na data da compra; o pagamento da fatura, transferências entre suas contas, receitas e despesas previstas não são somados aos gastos. As categorias são as que foram informadas nos lançamentos.
 
-Use as setas para consultar meses anteriores ou **Atual** para voltar ao mês corrente. Toque em uma categoria para conferir os lançamentos que compõem o valor, com data, forma de pagamento e conta/cartão. Os detalhes são paginados em cinco registros. Os percentuais arredondados somam 100%, e o destaque informa a categoria de maior participação, sem usar limites ou orçamentos não cadastrados. Meses sem gastos mostram R$ 0,00 e um estado vazio, sem valores de demonstração.
+Use as setas para consultar meses anteriores ou futuros, ou **Atual** para voltar ao mês corrente. Toque em uma categoria para conferir os lançamentos que compõem o valor, com data, forma de pagamento e conta/cartão. Os detalhes são paginados em cinco registros. Os percentuais arredondados somam 100%, e o destaque informa a categoria de maior participação, sem usar limites ou orçamentos não cadastrados. Meses sem gastos mostram R$ 0,00 e um estado vazio, sem valores de demonstração. A seção **Pagamentos previstos** mostra separadamente faturas e compromissos pendentes, com datas e valores, respeitando o contexto selecionado.
 
 ## Agenda de compromissos
 
 Use **Minha agenda** no início para chegar ao calendário. No celular, a semana mostra sete dias sem arrastar; no desktop, o mês e os eventos do dia ficam lado a lado. Alterne entre **Semana**, **Mês** e **Agenda**, use **Hoje**, as setas ou o seletor de mês para navegar. A lista **Agenda** agrupa os eventos do mês por data.
 
 Cadastre um compromisso com título, data, horário opcional, categoria, local e observações. Ele fica salvo no servidor, junto com os demais dados, e entra na exportação do controle. Você pode editar, concluir ou reabrir um compromisso e excluir com a opção de **Desfazer**. Compromissos podem repetir semanal ou mensalmente, com data final opcional. A conclusão é por ocorrência; edição e exclusão alteram a série inteira. Quando o mês não tem o dia original, a repetição mensal usa o último dia e retoma o dia original no mês seguinte.
+
+Mesmo quando o dia selecionado não tem eventos, **Próximos compromissos · 30 dias** exibe até dez próximos itens, com data e valor quando houver. Toque no item para selecionar seu dia. O painel do dia continua mostrando somente os eventos da data selecionada.
 
 Filtre os eventos por compromissos, financeiro ou aniversários. **Concluídos** mostra os compromissos pessoais já finalizados. Faturas, previsões e movimentações financeiras aparecem com seus valores; abra os detalhes para acessar a seção correspondente da carteira. Concluir um compromisso pessoal não altera saldos ou confirma pagamentos. Eventos sem horário informado não recebem um horário inventado.
 

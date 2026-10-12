@@ -1,4 +1,5 @@
 import {today,addMonths,money,categorySpending,SCOPES,METHODS} from '../finance.mjs';
+import {pendingPayments} from '../financial-insights.mjs';
 
 const visuals={
   'Alimentação':['food','#20c68b'],'Moradia':['home','#8d9fe7'],'Transporte':['car','#69a6ed'],
@@ -35,11 +36,12 @@ export function createCategorySpendingUI(React,{useWallet}) {
     const nw=useWallet(),currentMonth=today().slice(0,7);
     const [month,setMonth]=React.useState(currentMonth),[scope,setScope]=React.useState('all'),[selected,setSelected]=React.useState(null);
     const report=React.useMemo(()=>categorySpending(nw.state,month,scope),[nw.state,month,scope]);
+    const pending=pendingPayments(nw.state,month,scope),pendingTotal=pending.reduce((v,i)=>v+(i.amountCents||0),0);
     const changeMonth=next=>{setMonth(next);setSelected(null);};
     const largest=report.categories[0];
     return h('section',{className:'nf-theme cs-panel','data-theme':isDarkMode?'dark':'light','aria-label':'Gastos por categoria'},
       h('header',{className:'cs-header'},h('div',{},h('p',{className:'cs-eyebrow'},month===currentMonth?'Mês atual':'Mês selecionado'),h('h3',{},'Gastos por categoria')),h('div',{className:'cs-total'},h('span',{},'Despesa total'),h('strong',{},money(report.totalCents)))),
-      h('div',{className:'cs-period'},h('button',{type:'button','aria-label':'Mês anterior dos gastos',disabled:month==='2000-01',onClick:()=>changeMonth(addMonths(month+'-01',-1).slice(0,7))},icon('left')),h('span',{},periodLabel(month)),h('button',{type:'button','aria-label':'Próximo mês dos gastos',disabled:month>=currentMonth,onClick:()=>changeMonth(addMonths(month+'-01',1).slice(0,7))},icon('right')),month!==currentMonth&&h('button',{type:'button',className:'cs-current','aria-label':'Voltar ao mês atual',onClick:()=>changeMonth(currentMonth)},'Atual')),
+      h('div',{className:'cs-period'},h('button',{type:'button','aria-label':'Mês anterior dos gastos',disabled:month==='2000-01',onClick:()=>changeMonth(addMonths(month+'-01',-1).slice(0,7))},icon('left')),h('span',{},periodLabel(month)),h('button',{type:'button','aria-label':'Próximo mês dos gastos',disabled:month==='2200-12',onClick:()=>changeMonth(addMonths(month+'-01',1).slice(0,7))},icon('right')),month!==currentMonth&&h('button',{type:'button',className:'cs-current','aria-label':'Voltar ao mês atual',onClick:()=>changeMonth(currentMonth)},'Atual')),
       h('label',{className:'cs-scope'},h('span',{},'Contexto'),h('select',{'aria-label':'Contexto dos gastos',value:scope,onChange:e=>{setScope(e.target.value);setSelected(null);}},h('option',{value:'all'},'Pessoal e empresa'),...Object.entries(SCOPES).map(([value,label])=>h('option',{key:value,value},label)))),
       !nw.loaded?h('p',{className:'cs-empty',role:'status'},nw.error||'Carregando os gastos…'):nw.error?h('p',{className:'cs-error',role:'alert'},nw.error):report.categories.length?h(React.Fragment,{},
         h('p',{className:'cs-count'},`${report.count} despesa${report.count===1?'':'s'} confirmada${report.count===1?'':'s'} · ${report.categories.length} categoria${report.categories.length===1?'':'s'}`),
@@ -48,7 +50,9 @@ export function createCategorySpendingUI(React,{useWallet}) {
           return h('div',{key:category.name,className:'cs-category',style:{'--cs-accent':color}},h('button',{type:'button',className:'cs-category-button','aria-expanded':expanded,'aria-label':`${category.name}: ${money(category.amountCents)}, ${category.percent}% do total, ${category.count} despesa${category.count===1?'':'s'}`,onClick:()=>setSelected(expanded?null:category.name)},h('span',{className:'cs-category-icon'},icon(visual)),h('span',{className:'cs-category-name'},h('strong',{},category.name),h('small',{},`${category.count} lançamento${category.count===1?'':'s'}`)),h('span',{className:'cs-category-value'},h('b',{},money(category.amountCents)),h('small',{},`${category.percent}%`)),h('span',{className:'cs-chevron'+(expanded?' expanded':'')},icon('down'))),h('div',{className:'cs-bar','aria-hidden':true},h('span',{style:{width:`${category.share}%`}})),expanded&&h(CategoryDetails,{key:category.name+month+scope,category,state:nw.state}));
         })),
         h('div',{className:'cs-insight'},icon('chart'),h('div',{},h('strong',{},'Maior participação'),h('p',{},`${largest.name} representa ${largest.percent}% dos gastos do período, com ${money(largest.amountCents)}.`)))):
-        h('div',{className:'cs-empty'},icon('chart'),h('strong',{},'Nenhuma despesa neste mês'),h('p',{},scope==='all'?'As despesas confirmadas aparecerão aqui com seus valores e categorias.':`Nenhuma despesa confirmada no contexto ${SCOPES[scope].toLowerCase()}.`)),
+        h('div',{className:'cs-empty'},icon('chart'),h('strong',{},'Nenhuma despesa confirmada neste mês'),h('p',{},scope==='all'?'Faturas e compromissos cadastrados aparecem abaixo como pagamentos previstos.':`Nenhuma despesa confirmada no contexto ${SCOPES[scope].toLowerCase()}.`)),
+      nw.loaded&&!nw.error&&h('section',{className:'cs-pending','aria-label':'Pagamentos previstos do mês'},h('header',{className:'cs-header'},h('div',{},h('h3',{},'Pagamentos previstos'),h('p',{className:'nf-muted'},'Faturas e compromissos ainda a pagar pela conta. Consignados já estão no salário líquido.')),h('div',{className:'cs-total'},h('span',{},'Ainda a pagar'),h('strong',{},money(pendingTotal)))),
+        pending.length?pending.map(item=>h('div',{key:item.key,className:'cs-transaction'},h('div',{},h('strong',{},item.description),h('span',{},new Date(item.date+'T12:00:00').toLocaleDateString('pt-BR')+' · '+item.source)),h('b',{},item.amountCents===null?'Valor a informar':money(item.amountCents)))):h('p',{className:'nf-muted'},'Nenhum pagamento previsto neste mês e contexto.')),
       h('details',{className:'cs-calculation'},h('summary',{},'Como este resumo é calculado'),h('p',{},'Somamos as despesas confirmadas na data do lançamento. Compras no crédito entram pelo valor total na data da compra. Receitas, transferências entre suas contas, previsões e pagamentos de fatura ficam fora. Os percentuais são arredondados para somar 100%.')));
   }
   return {CategorySpending};

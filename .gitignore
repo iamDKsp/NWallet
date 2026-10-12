@@ -9,3 +9,5 @@ yarn-debug.log*
 yarn-error.log*
 .system_generated/
 *.log
+audit-preview/
+relatorio-auditoria-*.md

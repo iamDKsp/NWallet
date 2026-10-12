@@ -19,7 +19,7 @@ COPY seed-wallet.json ./
 RUN mkdir -p /app/data && chown -R node:node /app/data
 
 # Instalação segura de dependências
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm ci --omit=dev --ignore-scripts && npm run prepare:ui
 
 # Expor a porta
 EXPOSE 3950

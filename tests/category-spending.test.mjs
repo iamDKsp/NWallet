@@ -46,7 +46,7 @@ function renderPanel(state){
   visit(tree);return values.join(' ');
 }
 test('the rendered empty panel contains no invented totals, categories or budget claims',()=>{
-  const rendered=renderPanel(emptyState());assert.match(rendered,/R\$\s*0,00/);assert.match(rendered,/Nenhuma despesa neste mês/);assert.doesNotMatch(rendered,/820|499|prudencial|Excelente controle|Tecnologia/);
+  const rendered=renderPanel(emptyState());assert.match(rendered,/R\$\s*0,00/);assert.match(rendered,/Nenhuma despesa confirmada neste mês/);assert.doesNotMatch(rendered,/820|499|prudencial|Excelente controle|Tecnologia/);
 });
 test('the rendered report uses real spending and factual category insights',()=>{
   const s=fixture();s.entries=[expense({date:today(),amountCents:12550})];const rendered=renderPanel(s);

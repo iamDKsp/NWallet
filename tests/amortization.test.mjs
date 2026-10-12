@@ -52,18 +52,19 @@ test('debtPriorityRanking orders liabilities by urgency and cost', () => {
     { id: 'acc-santander', bank: 'Santander', kind: 'bank', openingBalanceCents: -200000, overdraftRateBps: 800 }
   ];
   const debts = [
-    { id: 'd1', name: 'Consignado Barato', kind: 'payroll_loan', installmentCents: 10000, installments: 10, cetBps: 200 },
-    { id: 'd2', name: 'Consignado Caro', kind: 'payroll_loan', installmentCents: 46116, installments: 36, cetBps: 585 }
+    { id: 'd1', name: 'Consignado Barato', kind: 'payroll_loan', installmentCents: 10000, installments: 10, firstDueDate:'2026-10-05', cetBps: 200 },
+    { id: 'd2', name: 'Consignado Caro', kind: 'payroll_loan', installmentCents: 46116, installments: 36, firstDueDate:'2026-10-05', cetBps: 585 }
   ];
   const invoices = [
-    { key: 'bb-inv', name: 'BB Ourocard', remainingCents: 298933 }
+    { key: 'bb-inv', name: 'BB Ourocard', remainingCents: 298933,date:'2026-09-28' }
   ];
 
-  const ranking = debtPriorityRanking(debts, accounts, [], invoices);
+  const ranking = debtPriorityRanking(debts, accounts, [], invoices,{asOf:'2026-10-12'});
   
-  // As duas emergências críticas (rotativo BB e cheque especial Santander) vêm no topo
-  assert.equal(ranking[0].urgency, 'critical');
-  assert.equal(ranking[1].urgency, 'critical');
+  // Saldo negativo e atraso exigem atenção, mas atraso não comprova taxa de rotativo.
+  assert.equal(ranking[0].urgency, 'high');
+  assert.equal(ranking[1].urgency, 'high');
+  assert.equal(ranking.find(r=>r.type==='card_invoice').monthlyRateBps,0);
 
   // Entre os consignados, o Consignado Caro (5.85% CET) vem antes do Barato (2.00% CET)
   const consignados = ranking.filter(r => r.type === 'payroll_loan');

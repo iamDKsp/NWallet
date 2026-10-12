@@ -5,7 +5,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const file=path.resolve('public/assets/index-DGDPhK2a.js');
 const original=fs.readFileSync(file,'utf8');
-if(original.includes('const nwFinance=createFinanceIntegration')){console.log('Financial integration is already installed.');process.exit(0);}
+if(original.includes('const nwFinance=createFinanceIntegration')){require('./fix_financial_views.cjs');console.log('Financial integration is already installed.');process.exit(0);}
 let s=original;
 function requireAt(needle,from=0){const i=s.indexOf(needle,from);if(i<0)throw new Error('Missing expected UI anchor: '+needle);return i;}
 function closing(start) {
@@ -116,4 +116,5 @@ s=s.replace('b.jsx(die,{isOpen:Z','b.jsx(nwFinance.NotificationModal,{isOpen:Z')
 new vm.Script(s.replace(/^import[^\n]+\n/,''));
 if(fs.readFileSync(file,'utf8')!==original)throw new Error('The UI changed concurrently. No files were written.');
 fs.writeFileSync(file,s);
+require('./fix_financial_views.cjs');
 console.log('Connected the existing UI to the persisted financial model.');

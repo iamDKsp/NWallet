@@ -44,12 +44,12 @@ export function createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,s
     const grid=React.useRef(),focusDate=React.useRef(null);
     const days=calendarDays(selected,view==='month'?'month':'week'),range=monthRange(selected);
     const start=[days[0]<range.start?days[0]:range.start,'2000-01-01'].sort().at(-1);
-    const nextWeek=shiftDays(selected,7),end=[[days.at(-1),range.end,nextWeek].sort().at(-1),'2200-12-31'].sort()[0];
+    const nextMonth=shiftDays(selected,30),end=[[days.at(-1),range.end,nextMonth].sort().at(-1),'2200-12-31'].sort()[0];
     const items=React.useMemo(()=>calendarItems(nw.state,start,end,selected),[nw.state,start,end,selected]);
     const visible=filterCalendarItems(items,filter,showCompleted);
     const byDate=React.useMemo(()=>{const map=new Map();for(const item of visible){if(!map.has(item.date))map.set(item.date,[]);map.get(item.date).push(item);}return map;},[items,filter,showCompleted]);
     const dayItems=byDate.get(selected)||[],monthItems=visible.filter(i=>i.date>=range.start&&i.date<=range.end);
-    const nextItems=visible.filter(i=>i.date>selected&&i.date<=nextWeek&&!i.completed&&i.source!=='transaction').slice(0,3);
+    const nextItems=visible.filter(i=>i.date>selected&&i.date<=nextMonth&&!i.completed&&i.source!=='transaction').slice(0,10);
     const completedCount=items.filter(i=>i.source==='appointment'&&i.completed&&i.date===selected).length;
     const open=(kind,item)=>{setError('');setModal({kind,item,key:Date.now()});};
     const close=()=>setModal(null);
@@ -126,7 +126,7 @@ export function createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,s
         h('div',{className:'nc-agenda-panel'},
           h('div',{className:'nc-agenda-heading'},h('div',{},h('h3',{},view==='agenda'?'Agenda do mês':dayLabel(selected)),h('p',{},view==='agenda'?localDateLabel(selected,{month:'long',year:'numeric'}):localDateLabel(selected,{day:'numeric',month:'long'}))),h('span',{className:'nc-event-count'},`${view==='agenda'?monthItems.length:dayItems.length} ${(view==='agenda'?monthItems.length:dayItems.length)===1?'evento':'eventos'}`)),
           view==='agenda'?(monthItems.length?grouped(monthItems):emptyDay()):(dayItems.length?h('div',{className:'nc-events'},dayItems.map(renderItem)):emptyDay()),
-          view!=='agenda'&&nextItems.length>0&&h('div',{className:'nc-upcoming'},h('h4',{},'Nos próximos 7 dias'),nextItems.map(item=>h('button',{key:item.id,type:'button',className:'nc-upcoming-item',onClick:()=>choose(item.date)},h('span',{},h('b',{},Number(item.date.slice(8))),localDateLabel(item.date,{month:'short'}).replace('.','')),h('strong',{},item.title.replace(/^🎂\s*/,'')),icon('right'))))))),
+          view!=='agenda'&&nextItems.length>0&&h('div',{className:'nc-upcoming'},h('h4',{},'Próximos compromissos · 30 dias'),nextItems.map(item=>h('button',{key:item.id,type:'button',className:'nc-upcoming-item',onClick:()=>choose(item.date)},h('span',{},h('b',{},Number(item.date.slice(8))),localDateLabel(item.date,{month:'short'}).replace('.','')),h('strong',{},item.title.replace(/^🎂\s*/,'')),Number.isSafeInteger(item.amountCents)&&h('b',{},money(item.amountCents)),icon('right'))))))),
       createPortal?createPortal(h('div',{className:'nf-theme nc-modal-host','data-theme':isDarkMode?'dark':'light'},h(Presence,{},modalView())),document.body):h('div',{className:'nc-modal-host'},h(Presence,{},modalView())));
   }
   return {Calendar};
