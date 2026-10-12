@@ -35,7 +35,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
   const selectWorkspaceSection=view=>{pendingWorkspaceTab=view;};
   const {Calendar}=createCalendarUI(React,{useWallet,Modal,Presence,calendarItems,selectWorkspaceSection,createPortal});
   const {CategorySpending}=createCategorySpendingUI(React,{useWallet});
-  const {Statistics}=createStatisticsUI(React,{useWallet,useSelectedMonth,selectWorkspaceSection});
+  const {Statistics}=createStatisticsUI(React,{useWallet,useSelectedMonth,selectWorkspaceSection,Modal,createPortal});
   const {NotificationCenter,NotificationModal}=createNotificationUI(React,{useWallet,Modal,Presence});
   let snapshot={state:emptyState(),revision:0,loaded:false,saving:false,error:''},boot;
   const listeners=new Set();
@@ -84,6 +84,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
   async function saveCard(data) {
     return save(s=>{
       const old=s.cards.find(c=>c.id===data.id),card=linkCardAccount(s,{...old,id:old?.id||uid(),name:data.cardName||old?.name||data.bank||data.name,scope:data.scope||old?.scope||'personal',closingDay:Number(data.closingDay||old?.closingDay||25),dueDay:Number(data.dueDay||old?.dueDay||5),openingDebtCents:data.openingDebtCents??old?.openingDebtCents??0,openingDueDate:data.openingDueDate||old?.openingDueDate||today(),display:{...old?.display,holder:data.name??old?.display?.holder,bank:data.bank??old?.display?.bank,number:data.number??old?.display?.number,fullNumber:data.fullNumber??old?.display?.fullNumber,expiry:data.expiry??old?.display?.expiry,color:data.color??old?.display?.color}},data.accountId===undefined?old?.accountId:data.accountId);
+      if(data.creditLimitCents!==undefined)card.creditLimitCents=data.creditLimitCents;
       if(old)s.cards[s.cards.indexOf(old)]=card;else s.cards.push(card);
     });
   }
@@ -213,8 +214,9 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
     const [accountId,setAccountId]=React.useState(item?.accountId||defaultAccountId||'');
     const account=s.accounts.find(a=>a.id===accountId);
     const last4=(item?.display?.number||'').replace(/\D/g,'').slice(-4);
-    return h(Modal,{title:item?'Editar cartão':'Adicionar cartão',onClose,onSubmit:fd=>onSave({id:item?.id,accountId:fd.get('accountId')||null,cardName:fd.get('cardName').trim(),bank:fd.get('bank').trim(),scope:account?.scope||fd.get('scope'),name:fd.get('holder').trim(),number:fd.get('last4')?`•••• •••• •••• ${fd.get('last4')}`:item?.display?.number||'•••• •••• •••• ••••',expiry:fd.get('expiry'),color:fd.get('color'),closingDay:Number(fd.get('closingDay')),dueDay:Number(fd.get('dueDay')),openingDebtCents:cents(fd.get('debt')),openingDueDate:fd.get('date')}),hint:account?'Este cartão ficará na conta selecionada, com o mesmo banco e contexto.':'Cartões independentes podem ser cadastrados sem uma conta bancária vinculada.'},
+    return h(Modal,{title:item?'Editar cartão':'Adicionar cartão',onClose,onSubmit:fd=>onSave({id:item?.id,accountId:fd.get('accountId')||null,cardName:fd.get('cardName').trim(),bank:fd.get('bank').trim(),scope:account?.scope||fd.get('scope'),name:fd.get('holder').trim(),number:fd.get('last4')?`•••• •••• •••• ${fd.get('last4')}`:item?.display?.number||'•••• •••• •••• ••••',expiry:fd.get('expiry'),color:fd.get('color'),closingDay:Number(fd.get('closingDay')),dueDay:Number(fd.get('dueDay')),openingDebtCents:cents(fd.get('debt')),openingDueDate:fd.get('date'),creditLimitCents:String(fd.get('creditLimit')||'').trim()?cents(fd.get('creditLimit')):null}),hint:account?'Este cartão ficará na conta selecionada, com o mesmo banco e contexto.':'Cartões independentes podem ser cadastrados sem uma conta bancária vinculada.'},
       field('cardName','Nome do cartão',inp('cardName',item?.name,'text',{required:true,maxLength:160,placeholder:'Ex.: Empresarial físico ou cartão virtual'}),true),
+      centsField('creditLimit','Limite de crédito total (R$, opcional)',item?.creditLimitCents??undefined,true,{required:false}),
       field('accountId','Conta bancária vinculada',h('select',{name:'accountId',value:accountId,onChange:e=>setAccountId(e.target.value)},h('option',{value:''},'Cartão sem conta vinculada'),...s.accounts.filter(a=>a.kind==='bank').map(a=>h('option',{key:a.id,value:a.id},`${a.name} · ${a.bank||'Banco não informado'} · ${SCOPES[a.scope]}`))),true),
       field('bank','Banco / instituição',account?h('input',{name:'bank',key:'linked',value:account.bank||account.name,readOnly:true}):inp('bank',item?cardBank(s,item):'','text',{key:'independent',required:true,maxLength:160,placeholder:'Instituição que emite o cartão'})),
       field('scope','Contexto',account?h('input',{name:'scope',value:SCOPES[account.scope],readOnly:true}):sel('scope',item?.scope||'personal',Object.entries(SCOPES))),

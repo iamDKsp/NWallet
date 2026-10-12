@@ -41,15 +41,19 @@ test('editing an existing card binds it to the bank without losing invoice or di
   let stored={revision:1,state:fixture()};stored.state.accounts[1].bank='Itaú';
   stored.state.cards[0].display={holder:'Titular',bank:'Anterior',number:'•••• 1234',color:'bg-purple-600'};
   stored.state.cards[0].openingInvoices=[{id:'older',description:'Parcela anterior',date:'2028-01-05',amountCents:1000}];
+  stored.state.cards[0].creditLimitCents=300000;
   const wallet=createFinanceIntegration({createElement:()=>null,useState:value=>[value,()=>{}],useEffect:()=>{}},null,null);
   globalThis.fetch=async(url,options)=>{if(options?.method==='PUT'){const data=JSON.parse(options.body);stored={revision:stored.revision+1,state:data.state};}return {ok:true,json:async()=>structuredClone(stored)};};
   try {
     await wallet.useWallet().refresh();await wallet.saveCard({id:'card',accountId:'b',cardName:'Empresarial físico'});
     const card=stored.state.cards[0];assert.equal(card.accountId,'b');assert.equal(card.scope,'business');
+    assert.equal(card.creditLimitCents,300000);
     assert.equal(card.openingDebtCents,10000);assert.equal(card.openingInvoices[0].id,'older');assert.equal(card.display.holder,'Titular');
     const adapted=wallet.legacyCards(stored.state)[0];assert.equal(adapted.accountId,'b');assert.equal(adapted.bank,'Itaú');
     await wallet.saveCard({id:'card',color:'bg-blue-600'});assert.equal(stored.state.cards[0].accountId,'b');
     await wallet.saveCard({id:'card',accountId:null});assert.equal(stored.state.cards[0].accountId,null);
+    await wallet.saveCard({id:'card',creditLimitCents:180000});assert.equal(stored.state.cards[0].creditLimitCents,180000);assert.equal(stored.state.cards[0].openingInvoices[0].id,'older');
+    await wallet.saveCard({id:'card',creditLimitCents:null});assert.equal(stored.state.cards[0].creditLimitCents,null);
   }finally{globalThis.fetch=originalFetch;}
 });
 test('calendar adapters preserve the string transaction date and supply Date appointments required by the original UI',()=>{

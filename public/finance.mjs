@@ -83,6 +83,7 @@ export function validateState(s) {
   }
   for (const c of s.cards) {
     assert(shortText(c.name) && Object.hasOwn(SCOPES,c.scope), 'Cartão inválido.');
+    assert(c.creditLimitCents==null||(signedAmount(c.creditLimitCents)&&c.creditLimitCents>=0), 'Limite de crédito inválido.');
     if(c.accountId != null) {
       const account=s.accounts.find(a=>a.id===c.accountId);
       assert(account && account.kind==='bank', 'O cartão deve estar vinculado a uma conta bancária existente.');

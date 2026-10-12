@@ -48,6 +48,22 @@ A previsão de pagamentos da competência reúne compromissos pagos pela conta e
 
 Em **Dívidas & Juros**, os totais separam parcelas restantes, cotações de quitação informadas, faturas abertas e saldos negativos atuais. Faturas aparecem com seu vencimento e estado A vencer/Vence hoje/Em atraso; não recebem taxa presumida de rotativo. O simulador ignora parcelas confirmadas, identifica a taxa usada e a competência de referência e apresenta uma estimativa mensal, que não substitui uma cotação do credor. Cotações inconsistentes com as parcelas geram avisos e não são alteradas automaticamente.
 
+### Estatísticas: cartões, faturas e limites
+
+As melhorias ficam em **Estatísticas**, nas abas **Resumo do mês** e **Cartões e faturas**, mantendo o visual do Início. O resumo tem um atalho para analisar o crédito. A aba de cartões mostra:
+
+- Fatura da competência, pagamentos registrados, fechamento e vencimento.
+- Limite total informado, valor comprometido, percentual utilizado e disponível estimado por cartão.
+- Faturas da competência ou todas em aberto, com filtro por cartão. Expanda uma fatura para conferir composição e pagamentos por data.
+- Faturas já cadastradas nos próximos seis meses, com valores por cartão.
+- Cheque especial em uma área própria, calculado pelo saldo negativo atual da conta e separado dos cartões.
+
+O comprometimento do cartão soma todas as faturas abertas, incluindo parcelas futuras. Pagamentos confirmados reduzem esse comprometimento. O disponível estimado é o limite informado menos o comprometimento, com mínimo zero por cartão; um excesso em outro cartão não consome o limite independente que ainda resta neste. Valores acima do limite geram um aviso de conferência. Essa estimativa não substitui o limite disponível informado pelo banco, pois depende dos registros e das regras de liberação/encargos.
+
+Use **Editar limite** diretamente em Estatísticas, ou o campo de limite no cadastro do cartão. Limite desconhecido aparece como **Não informado**; zero é um limite válido. Alterar um limite não altera compras, faturas, pagamentos ou saldos bancários.
+
+Os limites confirmados pelo usuário são Santander SX R$ 100,00, Nubank R$ 1.800,00 e BB Ourocard R$ 5.000,00. No próximo deploy, o servidor inicializa somente o campo ausente dos cartões correspondentes, com backup e revisão. Valores já configurados, inclusive zero ou explicitamente não informado, são preservados em deploys posteriores. O cheque especial Santander de R$ 2.000,00 permanece separado.
+
 ## Gastos por categoria
 
 Abra **Ver gastos por categoria** no cartão de saldo. O painel soma somente despesas confirmadas no mês escolhido, com opção de separar **Pessoal** e **Empresa**. Compras no crédito entram pelo valor total na data da compra; o pagamento da fatura, transferências entre suas contas, receitas e despesas previstas não são somados aos gastos. As categorias são as que foram informadas nos lançamentos.

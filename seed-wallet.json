@@ -40,6 +40,7 @@
     "cards": [
       {
         "id": "card-santander",
+        "creditLimitCents": 10000,
         "accountId": "account-santander",
         "name": "Santander SX (Final 8021)",
         "scope": "personal",
@@ -70,6 +71,7 @@
       },
       {
         "id": "card-nubank",
+        "creditLimitCents": 180000,
         "accountId": "account-nubank",
         "name": "Nubank Mastercard",
         "scope": "personal",
@@ -118,6 +120,7 @@
       },
       {
         "id": "card-bb",
+        "creditLimitCents": 500000,
         "accountId": "account-bb",
         "name": "BB Ourocard",
         "scope": "personal",

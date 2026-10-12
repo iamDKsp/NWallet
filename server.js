@@ -27,6 +27,7 @@ async function readBody(req) {
 }
 async function createServer() {
   const {emptyState,validateLedger} = await import(pathToFileURL(path.join(PUBLIC_DIR,'finance.mjs')));
+  const {initializeCardLimits} = await import(pathToFileURL(path.join(PUBLIC_DIR,'card-insights.mjs')));
   await fsp.mkdir(DATA_DIR,{recursive:true});
   const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.DATA_DIR && process.env.DATA_DIR.includes('.test-data'));
   const SEED_FILE = path.resolve(process.env.SEED_FILE || path.join(__dirname, 'seed-wallet.json'));
@@ -96,6 +97,16 @@ async function createServer() {
     });
     writes = job.catch(()=>{});
     return job;
+  }
+  // Add user-provided limits to legacy cards on the next deploy. This only
+  // initializes absent fields and uses the same validated, backed-up save path.
+  if(!isTest&&fs.existsSync(SEED_FILE)) {
+    try {
+      const seed=JSON.parse(await fsp.readFile(SEED_FILE,'utf8'));
+      const state=structuredClone(stored.state);
+      const initialized=initializeCardLimits(state,seed.state);
+      if(initialized){await save({revision:stored.revision,state});console.log(`[NWallet] Limites inicializados em ${initialized} cartão(ões); lançamentos preservados.`);}
+    }catch(err){console.error('[NWallet] Não foi possível inicializar os limites; dados existentes preservados:',err.message);}
   }
   const notifications=await createNotificationService({dataDir:DATA_DIR,readWallet:()=>stored.state});
   const server=http.createServer(async(req,res)=> {
