@@ -219,6 +219,125 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
     return h('div',{className:'nf-theme','data-theme':isDarkMode?'dark':'light'},h(Presence,{},h(CardForm,{key:item?.id||'new',item,s:nw.state,onClose,onSave:nw.saveCard})));
   }
 
+  function DebtsView({ s, p, month }) {
+    const debts = p.debts || [];
+    const [selectedDebtId, setSelectedDebtId] = React.useState(debts[0]?.id || '');
+    const [simAmountStr, setSimAmountStr] = React.useState('1000,00');
+
+    const ranking = debtPriorityRanking(debts, s.accounts, s.cards, invoices(s));
+    const totalNominal = debts.reduce((acc, d) => acc + (d.installmentCents * d.installments), 0);
+    const totalBalance = debts.reduce((acc, d) => acc + (d.currentBalanceCents || (d.installmentCents * d.installments)), 0);
+    const monthlyTotal = debts.reduce((acc, d) => acc + d.installmentCents, 0);
+
+    const targetDebt = debts.find(d => d.id === selectedDebtId) || debts[0];
+    let simResult = null;
+    if (targetDebt) {
+      try {
+        const cashCents = simAmountStr ? cents(simAmountStr) : 0;
+        if (cashCents > 0) {
+          simResult = simulateAmortization(targetDebt, cashCents, { asOfMonth: month });
+        }
+      } catch (_) {}
+    }
+
+    return section('Dívidas, Juros & Simulador de Amortização',
+      'Avalie o custo real de cada dívida, simule amortizações com desconto a valor presente (Resolução BACEN 3.516/2007) e priorize quitações.',
+      h(React.Fragment, {},
+        h('div', { className: 'nf-metrics' },
+          metric('Saldo p/ quitação total', totalBalance, 'out'),
+          metric('Total parcelas nominais', totalNominal, 'out'),
+          metric('Custo mensal parcelas', monthlyTotal, 'out')
+        ),
+        section('Ranking Estratégico de Quitação (Método Avalanche)',
+          'Dívidas ordenadas pelo custo financeiro efetivo. Elimine as mais caras primeiro para estancar a perda de juros.',
+          ranking.length ? h('div', { className: 'nf-stack' },
+            ranking.map(item => h('article', { key: item.id, className: 'nf-contract-card' },
+              h('div', { className: 'nf-section-head' },
+                h('div', {},
+                  h('h3', {}, item.name),
+                  muted(`${item.urgency === 'critical' ? '🚨 URGÊNCIA CRÍTICA' : item.urgency === 'high' ? '⚠️ ALTA PRIORIDADE' : 'ℹ️ MODERADA'} · Taxa: ${item.monthlyRateBps ? formatBps(item.monthlyRateBps) + ' a.m.' : 'N/A'}${item.annualRatePercent ? ` (~${item.annualRatePercent}% a.a.)` : ''}`)
+                ),
+                h('div', { className: 'nf-actions' },
+                  h('span', { className: `nf-badge ${item.urgency}` }, item.urgency === 'critical' ? 'Crítica' : item.urgency === 'high' ? 'Alta' : 'Moderada'),
+                  item.type === 'payroll_loan' || item.type === 'financing' || item.type === 'loan'
+                    ? btn('Simular amortização', () => { setSelectedDebtId(item.debt.id); }, 'small')
+                    : null
+                )
+              ),
+              h('p', { className: 'nf-hint' }, item.reason),
+              h('div', { className: 'nf-metrics' },
+                metric(item.type === 'overdraft' ? 'Limite utilizado' : item.type === 'card_invoice' ? 'Fatura em aberto' : 'Saldo quitação', item.balanceCents, 'out'),
+                item.nominalRemainingCents ? metric('Total restante nominal', item.nominalRemainingCents) : metric('Custo diário/mensal', 'Juros ativos'),
+                item.installmentCents ? metric('Parcela mensal', item.installmentCents) : metric('Ação', item.urgency === 'critical' ? 'Quitar urgente' : 'Acompanhar')
+              )
+            ))
+          ) : empty('Nenhuma dívida mapeada', 'Cadastre seus contratos para ativar o ranking de juros.')
+        ),
+        targetDebt ? h('div', { className: 'nf-sim-box' },
+          h('div', { className: 'nf-section-head' },
+            h('div', {},
+              h('h2', {}, 'Simulador de Amortização (Desconto BACEN)'),
+              muted(`Abatimento de trás para frente no contrato: ${targetDebt.name}`)
+            )
+          ),
+          h('div', { className: 'nf-form-grid' },
+            field('contract', 'Contrato selecionado',
+              h('select', { value: targetDebt.id, onChange: e => setSelectedDebtId(e.target.value) },
+                debts.map(d => h('option', { key: d.id, value: d.id }, `${d.name} (${d.cetBps ? formatBps(d.cetBps) + ' CET' : d.interestRateBps ? formatBps(d.interestRateBps) + ' a.m.' : 'Sem taxa'})`))
+              )
+            ),
+            field('simAmount', 'Valor disponível para aporte (R$)',
+              inp('simAmount', simAmountStr, 'text', {
+                inputMode: 'decimal',
+                onChange: e => setSimAmountStr(e.target.value)
+              })
+            )
+          ),
+          h('div', { className: 'nf-sim-quick' },
+            muted('Atalhos rápidos:'),
+            ['500,00', '1.000,00', '2.000,00', '5.000,00', '10.000,00'].map(val =>
+              btn(`R$ ${val}`, () => setSimAmountStr(val), 'quiet small')
+            )
+          ),
+          simResult && simResult.eliminatedCount > 0 ? h(React.Fragment, {},
+            h('div', { className: 'nf-metrics', style: { marginTop: '16px' } },
+              metric('Parcelas eliminadas', `${simResult.eliminatedCount} do final`),
+              metric('Economia pura em juros', simResult.interestSavedCents, 'in'),
+              metric('Prazo reduzido', `${simResult.monthsReduced} meses adiantados`)
+            ),
+            h('p', { className: 'nf-notice' },
+              `Com R$ ${inputMoney(simResult.totalRealPaidCents)}, você quita R$ ${inputMoney(simResult.totalNominalEliminatedCents)} de dívida nominal! Desconto real de ${simResult.discountPercentage}% no valor das parcelas.`
+            ),
+            h('table', { className: 'nf-sim-table' },
+              h('thead', {},
+                h('tr', {},
+                  h('th', {}, 'Parcela'),
+                  h('th', {}, 'Mês Vencimento'),
+                  h('th', { className: 'money' }, 'Valor Nominal'),
+                  h('th', { className: 'money' }, 'Valor c/ Desconto (VP)'),
+                  h('th', { className: 'money' }, 'Juros Economizados')
+                )
+              ),
+              h('tbody', {},
+                simResult.eliminated.map(row => h('tr', { key: row.number },
+                  h('td', {}, `Parcela ${row.number}`),
+                  h('td', {}, row.month),
+                  h('td', { className: 'money' }, money(row.nominalCents)),
+                  h('td', { className: 'money' }, money(row.presentValueCents)),
+                  h('td', { className: 'money', style: { color: 'var(--nf-green)', fontWeight: 'bold' } }, money(row.interestSavedCents))
+                ))
+              )
+            )
+          ) : h('p', { className: 'nf-hint full' },
+            targetDebt.interestRateBps || targetDebt.cetBps
+              ? 'Informe um valor de aporte suficiente para quitar pelo menos uma parcela futura.'
+              : 'Este contrato não possui taxa de juros ou CET cadastrado para calcular o desconto. Edite o contrato e informe a taxa.'
+          )
+        ) : null
+      )
+    );
+  }
+
   function Workspace({isDarkMode=true}) {
     const nw=useWallet(),s=nw.state,p=plansOf(s);
     const [tab,setTab]=React.useState(()=>workspaceSection(location.search,pendingWorkspaceTab)),[month,setMonth]=React.useState(monthNow()),[modal,setModal]=React.useState(null),[notice,setNotice]=React.useState('');
@@ -227,7 +346,7 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
     const close=()=>setModal(null);
     const persist=async fn=>{await nw.save(fn);setNotice('Salvo no seu financeiro.');};
     const monthItems=obligations(s,month),projection=commitmentSummary(s,month),business=businessSummary(s,month),actual=summary(s,month);
-    const tabs=[['overview','Visão geral'],['birthdays','Aniversários'],['payroll','CLT e folha'],['business','Empresa'],['commitments','Compromissos'],['accounts','Contas'],['history','Registros'],['notifications','Notificações']];
+    const tabs=[['overview','Visão geral'],['debts','Dívidas & Juros'],['birthdays','Aniversários'],['payroll','CLT e folha'],['business','Empresa'],['commitments','Compromissos'],['accounts','Contas'],['history','Registros'],['notifications','Notificações']];
     const noAccounts=()=>empty('Comece pelas suas contas','Cadastre a conta que recebe seu salário, a conta da empresa e o dinheiro em mãos.');
     const totalDebt=p.debts.reduce((v,d)=>v+debtSchedule(s,d).filter(i=>!i.paid).reduce((a,i)=>a+i.amountCents,0),0);
     const renderObligation=i=>row(i.name,`${new Date(i.date+'T12:00:00').toLocaleDateString('pt-BR')} · ${SCOPES[i.scope]||'Pessoal'}${i.number?` · parcela ${i.number}`:''}`,i.amountCents===null?'Valor a informar':i.amountCents,i.paid?badge('Confirmado','success'):i.viaPayroll?badge('Descontado na folha'):btn(i.type==='income'?'Recebi':'Paguei',()=>open('settle',{item:i}),'small'),i.variable?badge(i.amountCents?'Valor estimado · confirme o real':'Valor variável'):undefined);
@@ -294,129 +413,11 @@ export function createFinanceIntegration(React,motion,Presence,createPortal) {
       })):empty('Cadastre seu trabalho CLT','Informe o salário antes dos descontos que você vai cadastrar. Depois vincule consignados, pensão e outros descontos.'),btn('Cadastrar CLT',()=>open('payroll'),'primary','plus'));
     }
     function debtView(){return section('Consignados, financiamentos e empréstimos','Cadastre somente as parcelas que ainda faltam, com os valores do seu contrato.',p.debts.length?h('div',{className:'nf-stack'},p.debts.map(d=>{const schedule=debtSchedule(s,d),remaining=schedule.filter(i=>!i.paid),paid=schedule.length-remaining.length,pay=p.payrolls.find(p=>p.id===d.payrollId);return h('article',{key:d.id,className:'nf-contract-card'},h('div',{className:'nf-section-head'},h('div',{},h('h3',{},d.name),muted(`${({payroll_loan:'Consignado',financing:'Financiamento',loan:'Empréstimo'})[d.kind]}${pay?` · vinculado a ${pay.name}`:` · ${accountName(s,d.accountId)}`}${d.creditor?` · ${d.creditor}`:''}`)),h('div',{className:'nf-actions'},d.cetBps?h('span',{className:'nf-badge warning'},`CET ${formatBps(d.cetBps)} a.m.`):d.interestRateBps?h('span',{className:'nf-badge'},`${formatBps(d.interestRateBps)} a.m.`):null,btn('Simular',()=>setTab('debts'),'quiet small'),btn('Editar',()=>open('debt',{item:d}),'small'))),h('div',{className:'nf-metrics'},metric('Parcela',d.installmentCents),metric('Faltam',`${remaining.length} parcelas`),metric('Total a pagar',remaining.length*d.installmentCents,'out')),d.currentBalanceCents?muted(`Saldo p/ quitação informado: ${money(d.currentBalanceCents)}`):null,h('div',{className:'nf-progress'},h('span',{style:{width:`${paid/schedule.length*100}%`}})),muted(`${paid} de ${schedule.length} parcelas cadastradas confirmadas${d.kind==='payroll_loan'?' · descontadas ao confirmar o salário':''}`));})):empty('Mapeie suas dívidas','Seu consignado fica ligado à folha. Financiamentos e outros empréstimos saem da conta escolhida.'),btn('Adicionar contrato',()=>open('debt'),'primary','plus'));}
-    function debtsView() {
-      const debts = p.debts || [];
-      const [selectedDebtId, setSelectedDebtId] = React.useState(debts[0]?.id || '');
-      const [simAmountStr, setSimAmountStr] = React.useState('1000,00');
-
-      const ranking = debtPriorityRanking(debts, s.accounts, s.cards, invoices(s));
-      const totalNominal = debts.reduce((acc, d) => acc + (d.installmentCents * d.installments), 0);
-      const totalBalance = debts.reduce((acc, d) => acc + (d.currentBalanceCents || (d.installmentCents * d.installments)), 0);
-      const monthlyTotal = debts.reduce((acc, d) => acc + d.installmentCents, 0);
-
-      const targetDebt = debts.find(d => d.id === selectedDebtId) || debts[0];
-      let simResult = null;
-      if (targetDebt) {
-        try {
-          const cashCents = simAmountStr ? cents(simAmountStr) : 0;
-          if (cashCents > 0) {
-            simResult = simulateAmortization(targetDebt, cashCents, { asOfMonth: month });
-          }
-        } catch (_) {}
-      }
-
-      return section('Dívidas, Juros & Simulador de Amortização',
-        'Avalie o custo real de cada dívida, simule amortizações com desconto a valor presente (Resolução BACEN 3.516/2007) e priorize quitações.',
-        h(React.Fragment, {},
-          h('div', { className: 'nf-metrics' },
-            metric('Saldo p/ quitação total', totalBalance, 'out'),
-            metric('Total parcelas nominais', totalNominal, 'out'),
-            metric('Custo mensal parcelas', monthlyTotal, 'out')
-          ),
-          section('Ranking Estratégico de Quitação (Método Avalanche)',
-            'Dívidas ordenadas pelo custo financeiro efetivo. Elimine as mais caras primeiro para estancar a perda de juros.',
-            ranking.length ? h('div', { className: 'nf-stack' },
-              ranking.map(item => h('article', { key: item.id, className: 'nf-contract-card' },
-                h('div', { className: 'nf-section-head' },
-                  h('div', {},
-                    h('h3', {}, item.name),
-                    muted(`${item.urgency === 'critical' ? '🚨 URGÊNCIA CRÍTICA' : item.urgency === 'high' ? '⚠️ ALTA PRIORIDADE' : 'ℹ️ MODERADA'} · Taxa: ${item.monthlyRateBps ? formatBps(item.monthlyRateBps) + ' a.m.' : 'N/A'}${item.annualRatePercent ? ` (~${item.annualRatePercent}% a.a.)` : ''}`)
-                  ),
-                  h('div', { className: 'nf-actions' },
-                    h('span', { className: `nf-badge ${item.urgency}` }, item.urgency === 'critical' ? 'Crítica' : item.urgency === 'high' ? 'Alta' : 'Moderada'),
-                    item.type === 'payroll_loan' || item.type === 'financing' || item.type === 'loan'
-                      ? btn('Simular amortização', () => { setSelectedDebtId(item.debt.id); }, 'small')
-                      : null
-                  )
-                ),
-                h('p', { className: 'nf-hint' }, item.reason),
-                h('div', { className: 'nf-metrics' },
-                  metric(item.type === 'overdraft' ? 'Limite utilizado' : item.type === 'card_invoice' ? 'Fatura em aberto' : 'Saldo quitação', item.balanceCents, 'out'),
-                  item.nominalRemainingCents ? metric('Total restante nominal', item.nominalRemainingCents) : metric('Custo diário/mensal', 'Juros ativos'),
-                  item.installmentCents ? metric('Parcela mensal', item.installmentCents) : metric('Ação', item.urgency === 'critical' ? 'Quitar urgente' : 'Acompanhar')
-                )
-              ))
-            ) : empty('Nenhuma dívida mapeada', 'Cadastre seus contratos para ativar o ranking de juros.')
-          ),
-          targetDebt ? h('div', { className: 'nf-sim-box' },
-            h('div', { className: 'nf-section-head' },
-              h('div', {},
-                h('h2', {}, 'Simulador de Amortização (Desconto BACEN)'),
-                muted(`Abatimento de trás para frente no contrato: ${targetDebt.name}`)
-              )
-            ),
-            h('div', { className: 'nf-form-grid' },
-              field('contract', 'Contrato selecionado',
-                h('select', { value: targetDebt.id, onChange: e => setSelectedDebtId(e.target.value) },
-                  debts.map(d => h('option', { key: d.id, value: d.id }, `${d.name} (${d.cetBps ? formatBps(d.cetBps) + ' CET' : d.interestRateBps ? formatBps(d.interestRateBps) + ' a.m.' : 'Sem taxa'})`))
-                )
-              ),
-              field('simAmount', 'Valor disponível para aporte (R$)',
-                inp('simAmount', simAmountStr, 'text', {
-                  inputMode: 'decimal',
-                  onChange: e => setSimAmountStr(e.target.value)
-                })
-              )
-            ),
-            h('div', { className: 'nf-sim-quick' },
-              muted('Atalhos rápidos:'),
-              ['500,00', '1.000,00', '2.000,00', '5.000,00', '10.000,00'].map(val =>
-                btn(`R$ ${val}`, () => setSimAmountStr(val), 'quiet small')
-              )
-            ),
-            simResult && simResult.eliminatedCount > 0 ? h(React.Fragment, {},
-              h('div', { className: 'nf-metrics', style: { marginTop: '16px' } },
-                metric('Parcelas eliminadas', `${simResult.eliminatedCount} do final`),
-                metric('Economia pura em juros', simResult.interestSavedCents, 'in'),
-                metric('Prazo reduzido', `${simResult.monthsReduced} meses adiantados`)
-              ),
-              h('p', { className: 'nf-notice' },
-                `Com R$ ${inputMoney(simResult.totalRealPaidCents)}, você quita R$ ${inputMoney(simResult.totalNominalEliminatedCents)} de dívida nominal! Desconto real de ${simResult.discountPercentage}% no valor das parcelas.`
-              ),
-              h('table', { className: 'nf-sim-table' },
-                h('thead', {},
-                  h('tr', {},
-                    h('th', {}, 'Parcela'),
-                    h('th', {}, 'Mês Vencimento'),
-                    h('th', { className: 'money' }, 'Valor Nominal'),
-                    h('th', { className: 'money' }, 'Valor c/ Desconto (VP)'),
-                    h('th', { className: 'money' }, 'Juros Economizados')
-                  )
-                ),
-                h('tbody', {},
-                  simResult.eliminated.map(row => h('tr', { key: row.number },
-                    h('td', {}, `Parcela ${row.number}`),
-                    h('td', {}, row.month),
-                    h('td', { className: 'money' }, money(row.nominalCents)),
-                    h('td', { className: 'money' }, money(row.presentValueCents)),
-                    h('td', { className: 'money', style: { color: 'var(--nf-green)', fontWeight: 'bold' } }, money(row.interestSavedCents))
-                  ))
-                )
-              )
-            ) : h('p', { className: 'nf-hint full' },
-              targetDebt.interestRateBps || targetDebt.cetBps
-                ? 'Informe um valor de aporte suficiente para quitar pelo menos uma parcela futura.'
-                : 'Este contrato não possui taxa de juros ou CET cadastrado para calcular o desconto. Edite o contrato e informe a taxa.'
-            )
-          ) : null
-        )
-      );
-    }
     function recurringView(){return section('Pensão e contas recorrentes','Valor fixo para o que você já conhece; valor a informar para o que muda a cada mês.',p.recurrences.length?h('div',{},p.recurrences.map(r=>row(r.name,`${r.type==='income'?'A receber':'A pagar'} · dia ${r.day} · ${accountName(s,r.accountId)} · ${r.active?'ativo':'pausado'}`,r.amountMode==='variable'?(r.amountCents?`Estimativa ${money(r.amountCents)}`:'Valor a informar'):r.amountCents,h('div',{className:'nf-actions'},btn('Editar',()=>open('recurrence',{item:r}),'quiet'),btn(r.active?'Pausar':'Ativar',()=>persist(state=>{const item=ensurePlans(state).recurrences.find(x=>x.id===r.id);item.active=!item.active;}).catch(err=>setNotice(err.message)),'quiet'))))):empty('Seus compromissos mensais','Cadastre pensão, aluguel, assinaturas, luz, internet ou recebimentos recorrentes.'),h('div',{className:'nf-actions'},btn('Pensão',()=>open('recurrence',{pension:true}),'small','pension'),btn('Recorrência',()=>open('recurrence'),'primary small','plus')));}
 
     let body;
     if(tab==='overview')body=h(React.Fragment,{},h('div',{className:'nf-option-grid'},[['debts','debt','Dívidas & Juros','Simulador de amortização e ranking'],['birthdays','birthday','Aniversários','Datas especiais e lembretes'],['payroll','payroll','CLT e folha','Salário, descontos e líquido'],['business','business','Minha empresa','Saldo e retiradas pessoais'],['commitments','debt','Consignado e financiamento','Contratos e parcelas restantes'],['commitments','pension','Pensão','Na folha ou paga pela conta'],['commitments','recurring','Contas recorrentes','Fixas ou com valor a informar'],['accounts','wallet','Contas e saldos','Separe pessoal e empresa']].map(([id,i,title,text])=>h('button',{key:title,className:'nf-option',onClick:()=>setTab(id)},icon(i),h('strong',{},title),h('span',{},text)))),h('div',{className:'nf-metrics'},metric('Saldo nas contas',actual.balanceCents),metric('Parcelas restantes',totalDebt,'out'),metric('Previsto a pagar no mês',projection.unknown?(money(projection.expenseCents)+' + '+projection.unknown+' a informar'):projection.expenseCents,'out')),section('Agenda financeira',`Competência ${month} · ${projection.unknown} compromisso(s) com valor a informar. Consignados já estão dentro dos descontos do salário.`,monthItems.length?monthItems.map(i=>h('div',{key:i.key},renderObligation(i))):empty('Sua agenda começa pelos cadastros','Cadastre uma folha, contrato ou conta recorrente para ver os próximos compromissos.'),btn('Gasto avulso',()=>open('entry',{type:'expense'}),'small','plus')));
-    if(tab==='debts')body=debtsView();
+    if(tab==='debts')body=h(DebtsView,{s,p,month});
     if(tab==='birthdays')body=birthdaysView();
     if(tab==='payroll')body=payrollView();
     if(tab==='business')body=h(React.Fragment,{},h('div',{className:'nf-metrics'},metric('Na empresa hoje',business.balanceCents,'in'),metric('Recebido no mês',business.incomeCents),metric('Retirado para mim',business.withdrawalsCents)),section('Dinheiro da empresa','Receber de um cliente é uma entrada. Retirar para sua conta pessoal é uma transferência.',business.accounts.length?h('div',{className:'nf-card-grid'},business.accounts.map(accountTile)):empty('Cadastre a conta da empresa','Ela aparece como um cartão próprio, com saldo separado do seu dinheiro pessoal.'),btn('Conta da empresa',()=>open('account',{scope:'business'}),'primary','plus')),section('Movimentações da empresa','Entradas, despesas, aportes e retiradas.',s.entries.filter(e=>e.status==='posted'&&e.date.startsWith(month)&&(entryScope(s,e)==='business'||(e.type==='transfer'&&s.accounts.find(a=>a.id===e.toAccountId)?.scope==='business'))).reverse().map(e=>row(e.description,e.type==='transfer'?`${accountName(s,e.accountId)} → ${accountName(s,e.toAccountId)}`:accountName(s,e.accountId),e.amountCents))));
