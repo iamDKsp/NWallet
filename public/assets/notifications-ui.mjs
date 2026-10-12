@@ -1,5 +1,6 @@
 import {today,money} from '../finance.mjs';
 import {payableReminders} from '../reminders.mjs';
+import {birthdayAlerts} from '../birthdays.mjs';
 
 function deviceToken(){
   let token=localStorage.getItem('nwallet-push-device');
@@ -19,7 +20,12 @@ function pushSupport(){
   if(Notification.permission==='denied')return 'As notificações foram bloqueadas. Libere-as nas configurações do navegador ou do aparelho.';
   return '';
 }
-const bytes=value=>Uint8Array.from(atob(value.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+const bytes=value=>{
+  if(!value)throw new Error('Chave de notificação não informada.');
+  const padding='='.repeat((4-(value.length%4))%4);
+  const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
+  return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+};
 export function createNotificationUI(React,{useWallet,Modal,Presence}) {
   const h=React.createElement;
   function NotificationCenter(){
@@ -29,11 +35,22 @@ export function createNotificationUI(React,{useWallet,Modal,Presence}) {
     async function action(fn){if(busy)return;setBusy(true);setError('');setMessage('');try{await fn();}catch(err){setError(err.message);}finally{setBusy(false);}}
     async function enable(){
       const reason=pushSupport();if(reason)throw new Error(reason);
-      // Permission is requested directly from the user's button click.
-      if(await Notification.requestPermission()!=='granted')throw new Error('O aparelho não autorizou as notificações.');
+      let permission=('Notification' in window)?Notification.permission:'default';
+      if(permission!=='granted'){
+        try{
+          const res=Notification.requestPermission();
+          if(res&&typeof res.then==='function')permission=await res;
+          else permission=await new Promise(resolve=>Notification.requestPermission(resolve));
+        }catch(e){
+          permission=await new Promise(resolve=>Notification.requestPermission(resolve));
+        }
+      }
+      if(permission!=='granted')throw new Error('O aparelho não autorizou as notificações.');
       const registration=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;
+      let cfg=config;
+      if(!cfg?.publicKey){cfg=await request();setConfig(cfg);setSettings(cfg.settings);}
       let sub=await registration.pushManager.getSubscription(),created=false;
-      if(!sub){sub=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes(config.publicKey)});created=true;}
+      if(!sub){sub=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes(cfg.publicKey)});created=true;}
       try{const value=await request('/subscribe',{subscription:sub.toJSON()});setConfig(value);setMessage('Notificações ativadas neste aparelho. Use o teste para conferir a entrega.');}
       catch(err){if(created)await sub.unsubscribe();throw err;}
     }
@@ -42,13 +59,14 @@ export function createNotificationUI(React,{useWallet,Modal,Presence}) {
       if('serviceWorker' in navigator){const registration=await navigator.serviceWorker.getRegistration();const sub=await registration?.pushManager.getSubscription();if(sub)await sub.unsubscribe();}
       setMessage('Avisos desativados neste aparelho. Os outros aparelhos continuam vinculados.');
     }
-    const items=payableReminders(nw.state),reason=pushSupport(),shown=items.filter(i=>filter==='all'||i.status===filter);
+    const items=payableReminders(nw.state),bAlerts=birthdayAlerts(nw.state),reason=pushSupport(),shown=items.filter(i=>filter==='all'||i.status===filter);
     const labels={overdue:'Em atraso',today:'Vence hoje',upcoming:'Próximos 7 dias'};
     const button=(text,fn,kind='')=>h('button',{type:'button',className:'nf-button '+kind,disabled:busy,onClick:()=>action(fn)},text);
     const toggle=(label,name)=>h('label',{className:'nf-check'},h('input',{type:'checkbox',checked:settings[name],onChange:e=>setSettings({...settings,[name]:e.target.checked})}),label);
-    return h('div',{className:'nf-notifications'},h('header',{className:'nf-section-head'},h('div',{},h('h2',{},'Notificações e lembretes'),h('p',{className:'nf-muted'},'Contas, pensão, financiamentos e faturas. Pagamentos confirmados saem dos lembretes; consignados já descontados na folha não geram cobrança separada.'))),error&&h('p',{className:'nf-error',role:'alert'},error),message&&h('p',{className:'nf-notice',role:'status'},message),
-      h('section',{className:'nf-panel'},h('h3',{},'Avisos neste aparelho'),h('p',{className:'nf-muted'},config?.subscribed?'Este aparelho está vinculado aos avisos diários.':'Ative em cada aparelho onde deseja receber.'),reason&&h('p',{className:'nf-hint'},reason),config&&h('div',{className:'nf-actions nf-notification-actions'},config.subscribed?button('Desativar neste aparelho',disable):h('button',{className:'nf-button primary',type:'button',disabled:busy||!!reason,onClick:()=>action(enable)},busy?'Aguarde…':'Ativar neste aparelho'),config.subscribed&&button('Enviar teste',async()=>{await request('/test',{});setMessage('Teste aceito pelo serviço push. Confira as notificações do aparelho.');})),config?.lastSentDay&&h('p',{className:'nf-muted'},'Último resumo enviado: '+new Date(config.lastSentDay+'T12:00:00').toLocaleDateString('pt-BR')),config?.lastError&&h('p',{className:'nf-error'},config.lastError),!config&&button('Recarregar configuração',load),h('p',{className:'nf-muted'},'O resumo externo mostra a quantidade de contas, sem nomes nem valores. O servidor precisa permanecer ligado para enviá-lo.')),
+    return h('div',{className:'nf-notifications'},h('header',{className:'nf-section-head'},h('div',{},h('h2',{},'Notificações e lembretes'),h('p',{className:'nf-muted'},'Contas, faturas e aniversários. Pagamentos confirmados saem dos lembretes; alertas de aniversário chegam com 1 mês, 1 semana, 3 dias e no dia.'))),error&&h('p',{className:'nf-error',role:'alert'},error),message&&h('p',{className:'nf-notice',role:'status'},message),
+      h('section',{className:'nf-panel'},h('h3',{},'Avisos neste aparelho'),h('p',{className:'nf-muted'},config?.subscribed?'Este aparelho está vinculado aos avisos diários.':'Ative em cada aparelho onde deseja receber.'),reason&&h('p',{className:'nf-hint'},reason),config&&h('div',{className:'nf-actions nf-notification-actions'},config.subscribed?button('Desativar neste aparelho',disable):h('button',{className:'nf-button primary',type:'button',disabled:busy||!!reason,onClick:()=>action(enable)},busy?'Aguarde…':'Ativar neste aparelho'),config.subscribed&&button('Enviar teste de finanças',async()=>{await request('/test',{});setMessage('Teste financeiro aceito pelo serviço push. Confira as notificações do aparelho.');}),config.subscribed&&button('Testar aviso de aniversário 🎂',async()=>{await request('/test-birthday',{});setMessage('Teste de aniversário aceito pelo serviço push! Confira as notificações do aparelho.');},'primary')),config?.lastSentDay&&h('p',{className:'nf-muted'},'Último resumo enviado: '+new Date(config.lastSentDay+'T12:00:00').toLocaleDateString('pt-BR')),config?.lastError&&h('p',{className:'nf-error'},config.lastError),!config&&button('Recarregar configuração',load),h('p',{className:'nf-muted'},'O resumo externo mostra avisos essenciais. O servidor precisa permanecer ligado para enviá-lo.')),
       settings&&h('form',{className:'nf-panel',onSubmit:e=>{e.preventDefault();action(async()=>{const value=await request('/settings',settings);setConfig(value);setMessage('Horário e regras salvos para todos os seus aparelhos.');});}},h('h3',{},'Seu resumo diário'),h('div',{className:'nf-notification-settings'},toggle('Enviar lembretes diários','enabled'),h('label',{className:'nf-field'},'Horário · Brasília',h('input',{type:'time',required:true,value:settings.time,onChange:e=>setSettings({...settings,time:e.target.value})})),h('div',{className:'nf-reminder-days'},h('span',{},'Avisar antes do vencimento'),[7,3,1].map(n=>h('label',{key:n,className:'nf-check'},h('input',{type:'checkbox',checked:settings.beforeDays.includes(n),onChange:e=>setSettings({...settings,beforeDays:e.target.checked?[...settings.beforeDays,n]:settings.beforeDays.filter(d=>d!==n)})}),n===1?'Na véspera':`${n} dias antes`))),toggle('No dia do vencimento','onDue'),toggle('Todo dia enquanto houver atraso','overdue')),h('button',{className:'nf-button primary',disabled:busy,type:'submit'},busy?'Salvando…':'Salvar regras'),h('p',{className:'nf-muted'},'Um resumo por dia em cada aparelho, somente quando houver algo a avisar. A central abaixo continua visível mesmo se os avisos externos estiverem pausados.')),
+      bAlerts.length>0&&h('section',{className:'nf-panel'},h('h3',{},'🎂 Aniversários em destaque'),bAlerts.map(a=>h('article',{key:a.id,className:'nf-row'},h('div',{className:'nf-row-main'},h('strong',{},`🎂 ${a.name}`),h('p',{className:'nf-muted'},a.isToday?'Hoje é aniversário!':`Faltam ${a.daysRemaining} dias (${new Date(a.nextDate+'T12:00:00').toLocaleDateString('pt-BR')})`),h('span',{className:'nf-badge '+(a.isToday?'nf-badge-today':'')},a.isToday?'É hoje!':`Em ${a.daysRemaining} dia(s)`)),h('div',{className:'nf-row-end'},a.turningAge&&h('strong',{},`Completa ${a.turningAge} anos`))))),
       h('section',{className:'nf-panel'},h('h3',{},'O que precisa da sua atenção'),h('div',{className:'nf-actions nf-notification-filters'},['all','overdue','today','upcoming'].map(id=>h('button',{key:id,type:'button',className:'nf-button small '+(filter===id?'primary':''),onClick:()=>setFilter(id)},id==='all'?`Todas (${items.length})`:`${labels[id]} (${items.filter(i=>i.status===id).length})`))),!nw.loaded?h('p',{className:'nf-muted'},'Aguardando seus dados financeiros…'):shown.length?shown.map(i=>h('article',{key:i.key,className:'nf-row'},h('div',{className:'nf-row-main'},h('strong',{},i.name),h('p',{className:'nf-muted'},new Date(i.date+'T12:00:00').toLocaleDateString('pt-BR')+' · '+(i.scope==='business'?'Empresa':'Pessoal')),h('span',{className:'nf-badge '+(i.days<0?'nf-late':'')},i.days<0?`${Math.abs(i.days)} dia(s) de atraso`:i.days===0?'Vence hoje':`Em ${i.days} dia(s)`)),h('div',{className:'nf-row-end'},h('strong',{},i.amountCents===null?'Valor a informar':money(i.amountCents)),i.variable&&h('span',{className:'nf-badge'},'Valor variável')))):h('p',{className:'nf-muted'},'Nenhuma conta pendente neste filtro. Cadastre seus compromissos na Carteira para acompanhar os vencimentos.')));
   }
   function NotificationModal({isOpen,onClose,isDarkMode=true}){

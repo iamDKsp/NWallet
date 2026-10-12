@@ -19,6 +19,18 @@ async function route(service,url,method,data={},device=token,origin='http://loca
 async function remove(dir){assert.ok(path.resolve(dir).startsWith(root+path.sep));await fs.rm(dir,{recursive:true,force:true});}
 test('push subscriptions reject arbitrary URLs and malformed keys',()=>{
   assert.deepEqual(validSubscription(sub),sub);
+  // Accepts Apple push variants and padded base64 keys
+  const applePadded = {
+    endpoint: 'https://api.push.apple.com/v1/test-device',
+    keys: { p256dh: 'A'.repeat(87) + '=', auth: 'B'.repeat(22) + '==' }
+  };
+  assert.deepEqual(validSubscription(applePadded), applePadded);
+  const appleSubdomain = {
+    endpoint: 'https://p2-web.push.apple.com/test-device',
+    keys: { p256dh: 'A'.repeat(87), auth: 'B'.repeat(22) }
+  };
+  assert.deepEqual(validSubscription(appleSubdomain), appleSubdomain);
+
   for(const endpoint of ['http://127.0.0.1/private','https://web.push.apple.com.evil.test/x','https://example.test/x','https://web.push.apple.com:8443/x','https://user:pass@web.push.apple.com/x'])assert.throws(()=>validSubscription({...sub,endpoint}));
   assert.throws(()=>validSubscription({...sub,keys:{...sub.keys,auth:'invalid'}}));
 });

@@ -36,7 +36,22 @@ export function splitAmount(amount, count) {
   const base = Math.floor(amount/count), remainder = amount % count;
   return Array.from({length:count},(_,i)=>base+(i<remainder?1:0));
 }
-export const emptyState = () => ({ schemaVersion: 1, accounts: [], cards: [], entries: [] });
+export const emptyState = () => ({ schemaVersion: 1, accounts: [], cards: [], entries: [], birthdays: [] });
+export function cardBank(s, card) {
+  const account = s.accounts.find(a=>a.id===card.accountId);
+  return account ? account.bank || account.name : card.display?.bank || card.name;
+}
+export function linkCardAccount(s, card, accountId) {
+  const account = accountId ? s.accounts.find(a=>a.id===accountId) : null;
+  if (accountId && (!account || account.kind!=='bank')) throw new Error('Selecione uma conta bancária existente para vincular o cartão.');
+  return {...card,accountId:account?.id||null,scope:account?.scope||card.scope};
+}
+export function upsertAccount(s, account) {
+  if (account.kind!=='bank' && s.cards.some(c=>c.accountId===account.id)) throw new Error('Desvincule os cartões antes de alterar a conta para dinheiro em mãos.');
+  const index=s.accounts.findIndex(a=>a.id===account.id);
+  if(index<0)s.accounts.push(account);else s.accounts[index]=account;
+  for(const card of s.cards.filter(c=>c.accountId===account.id))card.scope=account.scope;
+}
 function assert(ok, message) { if (!ok) throw new Error(message); }
 const shortText = s => typeof s === 'string' && s.trim().length > 0 && s.length <= 160;
 const amount = n => Number.isSafeInteger(n) && n > 0 && n <= 1e12;
@@ -51,10 +66,16 @@ export function validateState(s) {
   }
   for (const a of s.accounts) {
     assert(shortText(a.name) && Object.hasOwn(SCOPES,a.scope) && ['bank','cash'].includes(a.kind), 'Conta inválida.');
+    assert(a.bank === undefined || (typeof a.bank === 'string' && a.bank.length <= 160), 'Banco inválido.');
     assert(signedAmount(a.openingBalanceCents) && validDate(a.openingDate), 'Saldo ou data inicial inválida.');
   }
   for (const c of s.cards) {
     assert(shortText(c.name) && Object.hasOwn(SCOPES,c.scope), 'Cartão inválido.');
+    if(c.accountId != null) {
+      const account=s.accounts.find(a=>a.id===c.accountId);
+      assert(account && account.kind==='bank', 'O cartão deve estar vinculado a uma conta bancária existente.');
+      assert(c.scope===account.scope, 'O contexto do cartão deve ser o mesmo da conta vinculada.');
+    }
     assert(Number.isInteger(c.closingDay) && c.closingDay >= 1 && c.closingDay <= 31 && Number.isInteger(c.dueDay) && c.dueDay >= 1 && c.dueDay <= 31, 'Datas do cartão inválidas.');
     assert(signedAmount(c.openingDebtCents) && c.openingDebtCents >= 0 && validDate(c.openingDueDate), 'Fatura inicial inválida.');
     for (const i of c.openingInvoices||[]) assert(amount(i.amountCents) && validDate(i.date) && shortText(i.description), 'Fatura anterior inválida.');
@@ -77,6 +98,20 @@ export function validateState(s) {
     if (e.type === 'expense') assert(CATEGORIES.includes(e.category), 'Categoria inválida.');
     if (credit) assert(e.status === 'posted' && Number.isInteger(e.installments) && e.installments >= 1 && e.installments <= 360 && e.amountCents >= e.installments, 'Parcelamento do cartão inválido.');
     if (e.type === 'card_payment') assert(card && e.paymentMethod !== 'credit' && validDate(e.invoiceDate), 'Fatura inválida.');
+  }
+  if (s.birthdays) {
+    assert(Array.isArray(s.birthdays) && s.birthdays.length <= 10000, 'Lista de aniversários inválida.');
+    for (const b of s.birthdays) {
+      assert(b && shortText(b.id) && !ids.has(b.id) && shortText(b.name) && validDate(b.date), 'Aniversário inválido.');
+      ids.add(b.id);
+      assert(!b.phone || (typeof b.phone === 'string' && b.phone.length <= 40), 'Telefone inválido.');
+      assert(!b.photo || (typeof b.photo === 'string' && b.photo.length <= 500000), 'Foto inválida.');
+      assert(!b.relationship || (typeof b.relationship === 'string' && b.relationship.length <= 100), 'Parentesco inválido.');
+      assert(!b.notes || (typeof b.notes === 'string' && b.notes.length <= 1000), 'Notas inválidas.');
+      assert(b.notifyDays === undefined || (Array.isArray(b.notifyDays) && b.notifyDays.every(n => Number.isInteger(n) && n >= 0 && n <= 365)), 'Configuração de aviso inválida.');
+      assert(b.active === undefined || typeof b.active === 'boolean', 'Status ativo inválido.');
+      assert(b.hasYear === undefined || typeof b.hasYear === 'boolean', 'Indicador de ano inválido.');
+    }
   }
   validatePlans(s);
   return s;

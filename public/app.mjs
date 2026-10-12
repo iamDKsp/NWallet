@@ -1,3 +1,4 @@
+import {upsertAccount,linkCardAccount} from './finance.mjs';
 import {SCOPES,METHODS,SOURCES,CATEGORIES,money,today,uid,cents,inputMoney,addMonths,splitAmount,emptyState,validateLedger,entryScope,accountBalance,invoices,summary} from './finance.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -155,10 +156,11 @@ function openAccount(id) {
   const a=state.accounts.find(a=>a.id===id), editable=!!a;
   const body=`<p>Informe o saldo real da conta na data inicial. Registre apenas as movimentações a partir dessa data.</p><div class="form-grid">${field('Nome da conta',input('name',a?.name,'text','required maxlength="160" placeholder="Ex.: Nubank pessoal"'),true)}${field('Contexto',select('scope',options(SCOPES,a?.scope||(scope==='business'?'business':'personal'))))}${field('Tipo',select('kind',options({bank:'Conta bancária',cash:'Dinheiro em mãos'},a?.kind||'bank')))}${field('Saldo inicial (R$)',input('balance',inputMoney(a?.openingBalanceCents||0),'text','required inputmode="decimal"'))}${field('Data do saldo inicial',input('date',a?.openingDate||today(),'date',`required max="${today()}" min="2000-01-01"`))}</div>${editable?'<div class="hint">Alterar o saldo inicial recalcula o saldo atual. Movimentações já registradas continuam contando.</div>':''}`;
   const form=openDialog(editable?'Editar conta':'Seu ponto de partida',body,'Salvar conta',async fd=>{
-    const account={id:a?.id||uid(),name:fd.get('name').trim(),scope:fd.get('scope'),kind:fd.get('kind'),openingBalanceCents:cents(fd.get('balance')),openingDate:fd.get('date')};
-    await save(s=>{const i=s.accounts.findIndex(x=>x.id===account.id);if(i>=0)s.accounts[i]=account;else s.accounts.push(account);});toast('Conta salva. Seu ponto de partida está registrado.');
+    const account={...a,id:a?.id||uid(),name:fd.get('name').trim(),scope:fd.get('scope'),kind:fd.get('kind'),openingBalanceCents:cents(fd.get('balance')),openingDate:fd.get('date')};
+    await save(s=>upsertAccount(s,account));toast('Conta salva. Seu ponto de partida está registrado.');
   });
   if(editable) addDeleteButton(form,'Excluir conta',async()=>{
+    if(state.cards.some(c=>c.accountId===id))throw new Error('Desvincule os cartões antes de excluir esta conta bancária.');
     if(state.entries.some(e=>e.accountId===id||e.toAccountId===id)) throw new Error('Esta conta possui registros vinculados. Remova ou altere os registros antes de excluir.');
     await save(s=>{s.accounts=s.accounts.filter(x=>x.id!==id);});toast('Conta excluída.');
   });
@@ -171,7 +173,7 @@ function openCard(id) {
   const c=state.cards.find(c=>c.id===id);
   const body=`<p>Use um nome para identificar o cartão. Para começar, informe somente a fatura anterior que ainda está em aberto.</p><div class="form-grid">${field('Nome do cartão',input('name',c?.name,'text','required maxlength="160" placeholder="Ex.: Nubank"'),true)}${field('Contexto',select('scope',options(SCOPES,c?.scope||(scope==='business'?'business':'personal'))))}${field('Dia de fechamento',input('closing',c?.closingDay||25,'number','required min="1" max="31"'))}${field('Dia de vencimento',input('due',c?.dueDay||5,'number','required min="1" max="31"'))}${field('Fatura inicial em aberto (R$)',input('debt',inputMoney(c?.openingDebtCents||0),'text','required inputmode="decimal"'))}${field('Vencimento da fatura inicial',input('date',c?.openingDueDate||today(),'date','required min="2000-01-01" max="2200-12-31"'),true)}</div><div class="hint">Não registre novamente compras já incluídas nessa fatura inicial. Depois de salvar, use “Parcelas anteriores” na carteira para informar valores antigos que vencerão nos próximos meses.</div>`;
   const form=openDialog(c?'Editar cartão':'Adicionar cartão',body,'Salvar cartão',async fd=>{
-    const card={...c,id:c?.id||uid(),name:fd.get('name').trim(),scope:fd.get('scope'),closingDay:Number(fd.get('closing')),dueDay:Number(fd.get('due')),openingDebtCents:cents(fd.get('debt')),openingDueDate:fd.get('date')};
+    const card=linkCardAccount(state,{...c,id:c?.id||uid(),name:fd.get('name').trim(),scope:fd.get('scope'),closingDay:Number(fd.get('closing')),dueDay:Number(fd.get('due')),openingDebtCents:cents(fd.get('debt')),openingDueDate:fd.get('date')},c?.accountId);
     await save(s=>{const i=s.cards.findIndex(x=>x.id===card.id);if(i>=0)s.cards[i]=card;else s.cards.push(card);});toast('Cartão salvo.');
   });
   if(c) addDeleteButton(form,'Excluir cartão',async()=>{

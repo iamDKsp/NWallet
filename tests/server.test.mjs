@@ -15,11 +15,12 @@ test('API validates, saves, detects conflicting writes, restores on restart and 
   let server=await createServer(),url=await listen(server);
   try {
     const blank=await (await fetch(url+'/api/wallet')).json();assert.deepEqual(blank,{revision:0,state:emptyState()});
-    const state={...emptyState(),accounts:[{id:'a',name:'Minha conta',scope:'personal',kind:'bank',openingBalanceCents:12345,openingDate:today()}]};
+    const state={...emptyState(),accounts:[{id:'a',name:'Minha conta',bank:'Itaú',scope:'personal',kind:'bank',openingBalanceCents:12345,openingDate:today()}],cards:['Físico','Virtual'].map((name,i)=>({id:`card-${i}`,name,accountId:'a',scope:'personal',closingDay:25,dueDay:5,openingDebtCents:0,openingDueDate:today()}))};
     const put=(revision,state,extra={})=>fetch(url+'/api/wallet',{method:'PUT',headers:{'Content-Type':'application/json',...extra},body:JSON.stringify({revision,state})});
     let response=await put(0,state);assert.equal(response.status,200);assert.equal((await response.json()).revision,1);
     response=await put(0,emptyState());assert.equal(response.status,409);
     response=await put(1,{...state,accounts:[{...state.accounts[0],openingBalanceCents:1.1}]});assert.equal(response.status,422);
+    response=await put(1,{...state,accounts:[]});assert.equal(response.status,422);
     response=await put(1,state,{Origin:'https://other.example'});assert.equal(response.status,403);
     response=await put(1,state);assert.equal(response.status,200);
     assert.equal(JSON.parse(await fs.readFile(path.join(dataDir,'wallet.previous.json'),'utf8')).revision,1);

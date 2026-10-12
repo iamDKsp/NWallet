@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cents,emptyState,validateLedger,accountBalance,summary,invoices,splitAmount,firstInvoiceDate,addMonths,today} from '../public/finance.mjs';
+import {cardBank,linkCardAccount,upsertAccount} from '../public/finance.mjs';
 const date='2026-10-10';
 function fixture() {
   return {...emptyState(),accounts:[
@@ -9,6 +10,28 @@ function fixture() {
   ],cards:[{id:'card',name:'Cartão',scope:'personal',closingDay:25,dueDay:5,openingDebtCents:20000,openingDueDate:'2026-10-05'}]};
 }
 const entry = overrides => ({id:'e',type:'expense',description:'Mercado',amountCents:10000,date,status:'posted',accountId:'personal',paymentMethod:'pix',category:'Alimentação',...overrides});
+
+test('one bank account owns multiple cards and supplies their bank and scope',()=>{
+  const s=fixture();s.accounts[1].bank='Itaú';
+  s.cards[0]=linkCardAccount(s,s.cards[0],'business');
+  s.cards.push(linkCardAccount(s,{...s.cards[0],id:'virtual',name:'Virtual'},'business'));
+  validateLedger(s,date);assert.ok(s.cards.every(c=>c.scope==='business'&&cardBank(s,c)==='Itaú'));
+  upsertAccount(s,{...s.accounts[1],bank:'Novo banco',scope:'personal'});
+  validateLedger(s,date);assert.ok(s.cards.every(c=>c.scope==='personal'&&cardBank(s,c)==='Novo banco'));
+  assert.equal(accountBalance(s,'business',date),200000);
+});
+test('cards remain independent by default and broken bank relationships are rejected',()=>{
+  const s=fixture();validateLedger(s,date);
+  for(const id of ['missing','cash']){
+    s.accounts.push({id:'cash',name:'Dinheiro',kind:'cash',scope:'personal',openingBalanceCents:0,openingDate:date});
+    assert.throws(()=>linkCardAccount(s,s.cards[0],id),/conta bancária/);s.accounts.pop();
+  }
+  s.cards[0]=linkCardAccount(s,s.cards[0],'personal');
+  assert.throws(()=>upsertAccount(s,{...s.accounts[0],kind:'cash'}),/Desvincule/);
+  const broken=structuredClone(s);broken.accounts.shift();assert.throws(()=>validateLedger(broken,date),/conta bancária/);
+  s.cards[0].scope='business';assert.throws(()=>validateLedger(s,date),/contexto/);
+  s.cards[0]=linkCardAccount(s,s.cards[0],null);validateLedger(s,date);assert.equal(s.cards[0].accountId,null);
+});
 test('Brazilian money inputs preserve centavos and reject ambiguous or invalid values',()=>{
   assert.equal(cents('R$ 1.234,56'),123456);assert.equal(cents('0,01'),1);assert.equal(cents('-0,01'),-1);assert.equal(cents('-10,50'),-1050);
   for(const v of ['','12.50','abc','1,999','1e5','NaN'])assert.throws(()=>cents(v));

@@ -40,6 +40,16 @@ arrow('an=()=>{','Ks("Notificação de teste","A simulação não altera seus sa
 arrow('xm=()=>{','Ks("Notificação de teste","A simulação não cria despesas no seu histórico.","info");');
 s=s.replace(/b\.jsx\(xne,\s*\{/g,'b.jsx(nwFinance.TransactionModal,{');
 
+s=s.replace(/b\.jsx\(bne,\s*\{/g,'b.jsx(nwFinance.CardModal,{');
+// Keep desktop hooks unconditional when the window crosses the mobile breakpoint.
+const wheelStart=s.indexOf('// Mouse wheel handler for desktop');
+if(wheelStart>=0){
+  const wheelEnd=requireAt('return b.jsxs("div", {',wheelStart),effect=s.slice(wheelStart,wheelEnd);
+  s=s.slice(0,wheelStart)+s.slice(wheelEnd);
+  const responsiveBranch=requireAt('if (E) {',requireAt('function bie()'));
+  s=s.slice(0,responsiveBranch)+effect+s.slice(responsiveBranch);
+}
+
 // Wallet on mobile was an empty placeholder; desktop card management remains below it.
 const placeholder='b.jsx("div",{className:"flex items-center justify-center h-[60vh]';
 const mobileBegin=requireAt(placeholder,requireAt('function bie()')),mobileEnd=closing(s.indexOf('(',mobileBegin));

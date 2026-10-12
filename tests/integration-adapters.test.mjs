@@ -25,6 +25,22 @@ function fixture(){const date=today();return {...emptyState(),accounts:[{id:'a',
 {id:'income',type:'income',description:'Recebimento',amountCents:50000,date,status:'posted',accountId:'a',paymentMethod:'pix',source:'clt'},
 {id:'transfer',type:'transfer',description:'Transferência',amountCents:1000,date,status:'posted',accountId:'a',toAccountId:'b',paymentMethod:'transfer'},
 {id:'payment',type:'card_payment',description:'Fatura',amountCents:5000,date,status:'posted',accountId:'a',cardId:'card',invoiceDate:date,paymentMethod:'boleto'}]};}
+test('editing an existing card binds it to the bank without losing invoice or display data',async()=>{
+  const originalFetch=globalThis.fetch;
+  let stored={revision:1,state:fixture()};stored.state.accounts[1].bank='Itaú';
+  stored.state.cards[0].display={holder:'Titular',bank:'Anterior',number:'•••• 1234',color:'bg-purple-600'};
+  stored.state.cards[0].openingInvoices=[{id:'older',description:'Parcela anterior',date:'2028-01-05',amountCents:1000}];
+  const wallet=createFinanceIntegration({createElement:()=>null,useState:value=>[value,()=>{}],useEffect:()=>{}},null,null);
+  globalThis.fetch=async(url,options)=>{if(options?.method==='PUT'){const data=JSON.parse(options.body);stored={revision:stored.revision+1,state:data.state};}return {ok:true,json:async()=>structuredClone(stored)};};
+  try {
+    await wallet.useWallet().refresh();await wallet.saveCard({id:'card',accountId:'b',cardName:'Empresarial físico'});
+    const card=stored.state.cards[0];assert.equal(card.accountId,'b');assert.equal(card.scope,'business');
+    assert.equal(card.openingDebtCents,10000);assert.equal(card.openingInvoices[0].id,'older');assert.equal(card.display.holder,'Titular');
+    const adapted=wallet.legacyCards(stored.state)[0];assert.equal(adapted.accountId,'b');assert.equal(adapted.bank,'Itaú');
+    await wallet.saveCard({id:'card',color:'bg-blue-600'});assert.equal(stored.state.cards[0].accountId,'b');
+    await wallet.saveCard({id:'card',accountId:null});assert.equal(stored.state.cards[0].accountId,null);
+  }finally{globalThis.fetch=originalFetch;}
+});
 test('calendar adapters preserve the string transaction date and supply Date appointments required by the original UI',()=>{
   const s=fixture(),transactions=integration.calendarTransactions(integration.transactions(s));
   assert.ok(transactions.every(e=>typeof e.date==='string'&&typeof e.date.includes==='function'&&e.isoDate===today()));

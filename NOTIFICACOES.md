@@ -12,10 +12,12 @@ Abra no Chrome, Edge, Firefox ou Safari compatível, clique em **Ativar neste ap
 
 1. Use iOS 16.4 ou posterior e abra o endereço **HTTPS** no Safari.
 2. No menu Compartilhar, escolha **Adicionar à Tela de Início**.
-3. Abra pelo ícone, entre em **Carteira → Notificações**, toque em **Ativar neste aparelho** e autorize.
-4. Toque em **Enviar teste**. Confira também as permissões do NWallet em Ajustes → Notificações.
+3. Abra pelo ícone, acesse **Ajustes → Notificações** (ou **Carteira → Notificações**), toque em **Ativar neste aparelho** e autorize.
+4. Toque em **Enviar teste**. Confira também as permissões do NWallet em Ajustes do iOS → Notificações.
 
-Abrir uma aba comum ou instalar o site em HTTP não atende aos requisitos de push do iPhone. A exceção de `localhost` permite desenvolvimento no próprio computador; o endereço HTTP da rede local não tem essa exceção no telefone.
+Para segurança biométrica (**Face ID / Touch ID**), acesse **Ajustes → Senha e Biometria** para ativar, testar o Face ID nativo do iPhone e definir seu PIN de contingência (padrão: 1234).
+
+Abrir uma aba comum ou instalar o site em HTTP não atende aos requisitos de push e WebAuthn do iPhone. A exceção de `localhost` permite desenvolvimento no próprio computador; no telefone é obrigatório o uso de HTTPS.
 
 ## Publicação no Portainer
 

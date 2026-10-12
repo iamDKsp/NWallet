@@ -1,5 +1,6 @@
 import {today,addMonths,invoices,plansOf} from './finance.mjs';
 import {debtSchedule,dueDate} from './planning.mjs';
+import {birthdayAlerts,formatBirthdayNotification} from './birthdays.mjs';
 
 export const defaultReminderSettings=()=>({enabled:true,time:'09:00',beforeDays:[3,1],onDue:true,overdue:true});
 export function validateReminderSettings(value) {
@@ -28,10 +29,28 @@ export function payableReminders(s,asOf=today(),horizon=7) {
 export function dailyReminder(s,settings=defaultReminderSettings(),asOf=today()) {
   if(!settings.enabled)return null;
   const items=payableReminders(s,asOf).filter(i=>i.days<0?settings.overdue:i.days===0?settings.onDue:settings.beforeDays.includes(i.days));
-  if(!items.length)return null;
+  const bAlerts=birthdayAlerts(s,asOf);
+  if(!items.length && !bAlerts.length)return null;
+
+  const bNotification=formatBirthdayNotification(bAlerts);
+
+  // Se houver apenas alertas de aniversário
+  if(!items.length && bNotification){
+    return {title:bNotification.title,body:bNotification.body,tag:`nwallet-birthday-${asOf}`,url:'/?view=birthdays',count:bNotification.count};
+  }
+
   const late=items.filter(i=>i.days<0).length,due=items.filter(i=>i.days===0).length,next=items.length-late-due;
-  const body=[late&&`${late} conta(s) em atraso`,due&&`${due} vencendo hoje`,next&&`${next} próxima(s) do vencimento`].filter(Boolean).join(' · ');
-  return {title:'NWallet · Lembrete financeiro',body:body+'. Abra sua carteira para conferir.',tag:`nwallet-daily-${asOf}`,url:'/?view=notifications',count:items.length};
+  const finBody=[late&&`${late} conta(s) em atraso`,due&&`${due} vencendo hoje`,next&&`${next} próxima(s) do vencimento`].filter(Boolean).join(' · ');
+
+  // Se houver apenas lembretes financeiros
+  if(!bNotification){
+    return {title:'NWallet · Lembrete financeiro',body:finBody+'. Abra sua carteira para conferir.',tag:`nwallet-daily-${asOf}`,url:'/?view=notifications',count:items.length};
+  }
+
+  // Se houver ambos (aniversário + financeiro)
+  const combinedTitle=bAlerts.some(a=>a.isToday)?'NWallet · Aniversário & Lembretes 🎉':'NWallet · Lembretes do Dia 🎂';
+  const combinedBody=`${bNotification.body} · ${finBody}.`;
+  return {title:combinedTitle,body:combinedBody,tag:`nwallet-daily-${asOf}`,url:'/?view=birthdays',count:items.length+bAlerts.length};
 }
 export function saoPauloClock(now=new Date()) {
   const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now).map(p=>[p.type,p.value]));

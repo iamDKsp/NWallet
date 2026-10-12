@@ -26,11 +26,19 @@ As parcelas de contratos são mensais e de valor igual, com as informações que
 
 Pensão pode ser um desconto da folha ou uma recorrência paga pela conta. Cadastre a forma que realmente se aplica a cada obrigação para evitar duplicidade.
 
+## Contas bancárias e cartões vinculados
+
+Informe o banco / instituição no cadastro da conta bancária. Após salvar, use **Adicionar cartão a esta conta**; essa opção também aparece na lista de cartões dentro da conta. Uma conta pode ter vários cartões físicos, virtuais ou adicionais.
+
+O cartão recebe automaticamente o banco e o contexto Pessoal/Empresa da conta vinculada. Alterar o banco ou o contexto da conta atualiza essa identificação nos cartões. Dinheiro em mãos não pode ter cartões vinculados. É preciso desvincular os cartões antes de transformar uma conta bancária em dinheiro em mãos ou excluir a conta.
+
+Os cartões anteriores permanecem disponíveis em **Contas → Cartões sem conta vinculada → Editar / vincular**. Cartões independentes podem continuar sem vínculo. Esse vínculo identifica a conta bancária à qual o cartão pertence; a conta usada para pagar uma fatura continua sendo escolhida no pagamento.
+
 ## Receitas, despesas, cartões e gráficos
 
 Os formulários originais de Receita e Despesa agora permitem selecionar conta, origem CLT/empresa/outros, categoria e pagamento por Pix, débito, dinheiro, boleto, transferência ou crédito. Para salário com consignado e outros descontos, prefira a confirmação da folha.
 
-Uma compra no crédito entra nos gastos pelo valor total e distribui parcelas entre as faturas. O dinheiro sai da conta somente no pagamento da fatura. Configure fechamento, vencimento e a fatura anterior em **Contas → Configurar cartões existentes**. O pagamento da fatura não gera outra despesa.
+Uma compra no crédito entra nos gastos pelo valor total e distribui parcelas entre as faturas. O dinheiro sai da conta somente no pagamento da fatura. Configure fechamento, vencimento e a fatura anterior ao editar o cartão, na opção **Fechamento, vencimento e fatura inicial**. O pagamento da fatura não gera outra despesa.
 
 Transferências movem os dois saldos e ficam fora dos totais de receitas/despesas. Os descontos da folha aparecem no detalhamento do CLT: o recebimento utilizado no saldo e nas estatísticas é o líquido. O salário bruto e os descontos não são somados novamente como movimentações bancárias.
 

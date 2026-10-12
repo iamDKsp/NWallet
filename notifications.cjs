@@ -7,9 +7,15 @@ const problem=(message,status=400)=>Object.assign(new Error(message),{status});
 function validSubscription(sub) {
   let url;try{url=new URL(sub?.endpoint);}catch{throw problem('Inscrição push inválida.');}
   const host=url.hostname;
-  if(url.protocol!=='https:'||url.port||url.username||url.password||url.hash||sub.endpoint.length>4096||!(host==='fcm.googleapis.com'||host==='updates.push.services.mozilla.com'||host==='web.push.apple.com'||host.endsWith('.notify.windows.com')))throw problem('Servidor de push não reconhecido.');
-  if(!sub.keys||!/^[-_A-Za-z0-9]{87}$/.test(sub.keys.p256dh)||!/^[-_A-Za-z0-9]{22}$/.test(sub.keys.auth))throw problem('Chaves de inscrição inválidas.');
-  return {endpoint:sub.endpoint,keys:{p256dh:sub.keys.p256dh,auth:sub.keys.auth}};
+  const isApple=host==='web.push.apple.com'||host==='api.push.apple.com'||host==='push.apple.com'||host.endsWith('.push.apple.com');
+  const isGoogle=host==='fcm.googleapis.com'||host==='android.googleapis.com'||host.endsWith('.fcm.googleapis.com');
+  const isMozilla=host==='updates.push.services.mozilla.com'||host.endsWith('.push.services.mozilla.com');
+  const isWindows=host.endsWith('.notify.windows.com');
+  if(url.protocol!=='https:'||url.port||url.username||url.password||url.hash||sub.endpoint.length>4096||!(isApple||isGoogle||isMozilla||isWindows))throw problem('Servidor de push não reconhecido.');
+  if(!sub.keys||typeof sub.keys.p256dh!=='string'||typeof sub.keys.auth!=='string')throw problem('Chaves de inscrição inválidas.');
+  const p256dh=sub.keys.p256dh.trim(),auth=sub.keys.auth.trim();
+  if(!/^[-_A-Za-z0-9+/]{86,88}={0,2}$/.test(p256dh)||!/^[-_A-Za-z0-9+/]{21,24}={0,2}$/.test(auth))throw problem('Chaves de inscrição inválidas.');
+  return {endpoint:sub.endpoint,keys:{p256dh,auth}};
 }
 const tokenHash=token=>crypto.createHash('sha256').update(token).digest('hex');
 const validToken=token=>typeof token==='string'&&/^[a-f0-9]{64}$/.test(token);
@@ -21,7 +27,7 @@ async function createNotificationService({dataDir,readWallet,send,now=()=>new Da
   catch(err){if(err.code!=='ENOENT')throw new Error('O arquivo de notificações foi preservado, mas não pôde ser lido.');store={settings:defaultReminderSettings(),keys:webpush.generateVAPIDKeys(),devices:[]};await fs.writeFile(file,JSON.stringify(store),{mode:0o600});}
   let queue=Promise.resolve();
   function mutate(fn){const job=queue.then(async()=>{const next=structuredClone(store),result=await fn(next);const tmp=file+'.tmp';await fs.writeFile(tmp,JSON.stringify(next),{mode:0o600});await fs.rename(tmp,file);store=next;return result;});queue=job.catch(()=>{});return job;}
-  const sender=send||((subscription,payload)=>webpush.sendNotification(subscription,JSON.stringify(payload),{vapidDetails:{subject:process.env.VAPID_SUBJECT||'mailto:nwallet@localhost',...store.keys},TTL:3600,timeout:10000,urgency:'normal'}));
+  const sender=send||((subscription,payload)=>webpush.sendNotification(subscription,JSON.stringify(payload),{vapidDetails:{subject:process.env.VAPID_SUBJECT||'mailto:contato@nwallet.teltech.com.br',...store.keys},TTL:3600,timeout:10000,urgency:'normal'}));
   function deviceFor(state,token){if(!validToken(token))return;return state.devices.find(d=>d.tokenHash===tokenHash(token));}
   const status=token=>{const d=deviceFor(store,token);return {publicKey:store.keys.publicKey,settings:store.settings,subscribed:!!d,lastSentDay:d?.lastSentDay||null,lastError:d?.lastError||null,deviceCount:store.devices.length,timeZone:'America/Sao_Paulo'};};
   async function handle(req,res,url,body,json) {
@@ -51,6 +57,14 @@ async function createNotificationService({dataDir,readWallet,send,now=()=>new Da
         const d=deviceFor(state,token);if(!d)throw problem('Ative as notificações neste aparelho primeiro.');
         if(d.lastTest&&now().getTime()-d.lastTest<30000)throw problem('Aguarde 30 segundos antes de testar novamente.',429);
         try{await sender(d.subscription,{title:'NWallet · Teste de notificação',body:'Este aparelho está pronto para receber seus lembretes financeiros.',tag:'nwallet-test',url:'/?view=notifications'});d.lastTest=now().getTime();d.lastError=null;}
+        catch{throw problem('O serviço push não aceitou o teste. Confira a conexão e tente novamente.',502);}
+      });json(res,200,{accepted:true});return true;
+    }
+    if(req.method==='POST'&&url.pathname==='/api/notifications/test-birthday'){
+      await mutate(async state=>{
+        const d=deviceFor(state,token);if(!d)throw problem('Ative as notificações neste aparelho primeiro.');
+        if(d.lastTest&&now().getTime()-d.lastTest<30000)throw problem('Aguarde 30 segundos antes de testar novamente.',429);
+        try{await sender(d.subscription,{title:'NWallet · Aniversário Hoje! 🎉',body:'🎂 Hoje é aniversário de teste! Notificações de aniversário ativas no seu iPhone.',tag:'nwallet-test-bday',url:'/?view=birthdays'});d.lastTest=now().getTime();d.lastError=null;}
         catch{throw problem('O serviço push não aceitou o teste. Confira a conexão e tente novamente.',502);}
       });json(res,200,{accepted:true});return true;
     }
