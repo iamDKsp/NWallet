@@ -44,6 +44,15 @@ Transferências movem os dois saldos e ficam fora dos totais de receitas/despesa
 
 O calendário original recebe os registros reais e os compromissos previstos. As estatísticas financeiras refletem os registros da competência atual; os controles antigos de períodos/metas ainda precisam de uma revisão funcional própria.
 
+## Aniversários e agendamentos especiais
+
+Acesse **Carteira → Aniversários** ou o atalho na Visão Geral. Cadastre amigos, familiares e contatos:
+- **Foto:** upload da câmera ou fototeca com compressão automática em Canvas (~15-20 KB), salvo diretamente no estado do wallet.
+- **Nome e data de nascimento:** cálculo automático de anos a completar e contagem regressiva de dias.
+- **Avisos no iPhone:** escolha de lembretes automáticos com 1 mês (30 dias), 1 semana (7 dias), 3 dias e no dia do aniversário.
+- **Parabéns no WhatsApp:** atalho direto com 1 clique para felicitações com mensagem pronta.
+- **Integração com a Agenda:** aniversários aparecem no calendário do sistema com o ícone 🎂.
+
 ## Persistência e desenvolvimento
 
 - O controle fica em `data/wallet.json`. A versão anterior fica em `data/wallet.previous.json`.

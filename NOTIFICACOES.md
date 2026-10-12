@@ -19,6 +19,14 @@ Para segurança biométrica (**Face ID / Touch ID**), acesse **Ajustes → Senha
 
 Abrir uma aba comum ou instalar o site em HTTP não atende aos requisitos de push e WebAuthn do iPhone. A exceção de `localhost` permite desenvolvimento no próprio computador; no telefone é obrigatório o uso de HTTPS.
 
+## Avisos de Aniversários
+
+Além dos lembretes de contas e compromissos, o NWallet envia notificações push dedicadas para aniversários no seu iPhone:
+- **Janelas de antecedência configuráveis:** 1 mês antes (30 dias), 1 semana antes (7 dias), 3 dias antes e no próprio dia do aniversário.
+- **Resumo Inteligente:** se houver tanto aniversários quanto contas vencendo no mesmo dia, os avisos são consolidados de forma limpa no mesmo push.
+- **Teste Rápido:** use o botão **"Testar aviso de aniversário 🎂"** na central de notificações para verificar a entrega imediata no iPhone.
+- **Deep Link:** ao tocar no banner da notificação no iPhone, o NWallet abre diretamente na aba **Aniversários**.
+
 ## Publicação no Portainer
 
 Publique estes arquivos com a imagem reconstruída: há uma dependência nova, `web-push`. O Dockerfile usa `npm ci` e inclui `notifications.cjs`. Mantenha o volume `nwallet-data` existente: nele ficam os dados financeiros e `notifications.json`, com as chaves VAPID, inscrições dos aparelhos, regras e controle do último envio. **Não apague o volume para atualizar.**
