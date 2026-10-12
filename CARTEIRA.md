@@ -42,7 +42,15 @@ Uma compra no crédito entra nos gastos pelo valor total e distribui parcelas en
 
 Transferências movem os dois saldos e ficam fora dos totais de receitas/despesas. Os descontos da folha aparecem no detalhamento do CLT: o recebimento utilizado no saldo e nas estatísticas é o líquido. O salário bruto e os descontos não são somados novamente como movimentações bancárias.
 
-O calendário original recebe os registros reais e os compromissos previstos. As estatísticas financeiras refletem os registros da competência atual; os controles antigos de períodos/metas ainda precisam de uma revisão funcional própria.
+As estatísticas financeiras refletem os registros da competência atual; os controles antigos de períodos/metas ainda precisam de uma revisão funcional própria.
+
+## Agenda de compromissos
+
+Use **Minha agenda** no início para chegar ao calendário. No celular, a semana mostra sete dias sem arrastar; no desktop, o mês e os eventos do dia ficam lado a lado. Alterne entre **Semana**, **Mês** e **Agenda**, use **Hoje**, as setas ou o seletor de mês para navegar. A lista **Agenda** agrupa os eventos do mês por data.
+
+Cadastre um compromisso com título, data, horário opcional, categoria, local e observações. Ele fica salvo no servidor, junto com os demais dados, e entra na exportação do controle. Você pode editar, concluir ou reabrir um compromisso e excluir com a opção de **Desfazer**. Compromissos podem repetir semanal ou mensalmente, com data final opcional. A conclusão é por ocorrência; edição e exclusão alteram a série inteira. Quando o mês não tem o dia original, a repetição mensal usa o último dia e retoma o dia original no mês seguinte.
+
+Filtre os eventos por compromissos, financeiro ou aniversários. **Concluídos** mostra os compromissos pessoais já finalizados. Faturas, previsões e movimentações financeiras aparecem com seus valores; abra os detalhes para acessar a seção correspondente da carteira. Concluir um compromisso pessoal não altera saldos ou confirma pagamentos. Eventos sem horário informado não recebem um horário inventado.
 
 ## Aniversários e agendamentos especiais
 
@@ -62,6 +70,8 @@ Acesse **Carteira → Aniversários** ou o atalho na Visão Geral. Cadastre amig
 - A instalação ainda requer conexão com o servidor e acesso privado; autenticação não faz parte desta etapa.
 - `public/finance.mjs` valida os dados e calcula saldos/faturas.
 - `public/planning.mjs` calcula folha, vínculos, competências, contratos e recorrências.
+- `public/agenda.mjs` valida compromissos e calcula repetições, datas e filtros da agenda.
+- `public/assets/calendar-ui.mjs` e `calendar.css` implementam o calendário responsivo e seus formulários.
 - `public/assets/finance-integration.mjs` reutiliza o React e os componentes da interface original.
 - `public/assets/finance-integration.css` aplica o estilo das novas opções dentro da identidade existente.
 - `scripts/integrate_finance.js` conecta os módulos ao bundle original. Se o bundle for regenerado pelos scripts antigos, esta integração precisa ser reaplicada; o script recusa estruturas inesperadas.
