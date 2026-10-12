@@ -49,7 +49,7 @@ export function createCategorySpendingUI(React,{useWallet}) {
         })),
         h('div',{className:'cs-insight'},icon('chart'),h('div',{},h('strong',{},'Maior participação'),h('p',{},`${largest.name} representa ${largest.percent}% dos gastos do período, com ${money(largest.amountCents)}.`)))):
         h('div',{className:'cs-empty'},icon('chart'),h('strong',{},'Nenhuma despesa neste mês'),h('p',{},scope==='all'?'As despesas confirmadas aparecerão aqui com seus valores e categorias.':`Nenhuma despesa confirmada no contexto ${SCOPES[scope].toLowerCase()}.`)),
-      h('details',{className:'cs-calculation'},h('summary',{},'Como este resumo é calculado'),h('p',{},'Somamos as despesas confirmadas na data do lançamento. Compras no crédito entram pelo valor total na data da compra. Receitas, transferências, previsões e pagamentos de fatura ficam fora. Os percentuais são arredondados para somar 100%.')));
+      h('details',{className:'cs-calculation'},h('summary',{},'Como este resumo é calculado'),h('p',{},'Somamos as despesas confirmadas na data do lançamento. Compras no crédito entram pelo valor total na data da compra. Receitas, transferências entre suas contas, previsões e pagamentos de fatura ficam fora. Os percentuais são arredondados para somar 100%.')));
   }
   return {CategorySpending};
 }

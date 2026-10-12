@@ -46,7 +46,7 @@ As estatísticas financeiras refletem os registros da competência atual; os con
 
 ## Gastos por categoria
 
-Abra **Ver Detalhes Mensais** no cartão de saldo. O painel soma somente despesas confirmadas no mês escolhido, com opção de separar **Pessoal** e **Empresa**. Compras no crédito entram pelo valor total na data da compra; o pagamento da fatura, transferências, receitas e despesas previstas não são somados aos gastos. As categorias são as que foram informadas nos lançamentos.
+Abra **Ver gastos por categoria** no cartão de saldo. O painel soma somente despesas confirmadas no mês escolhido, com opção de separar **Pessoal** e **Empresa**. Compras no crédito entram pelo valor total na data da compra; o pagamento da fatura, transferências entre suas contas, receitas e despesas previstas não são somados aos gastos. As categorias são as que foram informadas nos lançamentos.
 
 Use as setas para consultar meses anteriores ou **Atual** para voltar ao mês corrente. Toque em uma categoria para conferir os lançamentos que compõem o valor, com data, forma de pagamento e conta/cartão. Os detalhes são paginados em cinco registros. Os percentuais arredondados somam 100%, e o destaque informa a categoria de maior participação, sem usar limites ou orçamentos não cadastrados. Meses sem gastos mostram R$ 0,00 e um estado vazio, sem valores de demonstração.
 
