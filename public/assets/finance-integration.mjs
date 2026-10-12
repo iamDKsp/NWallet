@@ -323,5 +323,96 @@ export function createFinanceIntegration(React,motion,Presence) {
     const [type,setType]=React.useState(item?.type||'expense'),[mode,setMode]=React.useState(item?.amountMode||'fixed');
     return h(Modal,{title:pension?'Pensão paga pela conta':item?'Editar recorrência':'Conta ou recebimento recorrente',onClose,onSubmit:onSave,hint:'Previsões não alteram o saldo. A cada mês, confirme quando pagar ou receber. No modo variável, confirme o valor real.'},field('name','Descrição',inp('name',item?.name||(pension?'Pensão':''),'text',{required:true,maxLength:160}),true),field('type','Movimentação',h('select',{name:'type',value:type,onChange:e=>setType(e.target.value)},h('option',{value:'expense'},'Conta a pagar'),h('option',{value:'income'},'Recebimento previsto'))),field('amountMode','Valor',h('select',{name:'amountMode',value:mode,onChange:e=>setMode(e.target.value)},h('option',{value:'fixed'},'Fixo todo mês'),h('option',{value:'variable'},'Varia · informar a cada mês'))),field('amount',mode==='fixed'?'Valor mensal (R$)':'Estimativa (opcional, R$)',inp('amount',item?.amountCents?inputMoney(item.amountCents):'','text',{inputMode:'decimal',required:mode==='fixed',placeholder:'0,00'})),field('day','Dia do vencimento / recebimento',inp('day',item?.day||10,'number',{required:true,min:1,max:31})),field('accountId','Conta',sel('accountId',item?.accountId,accountOpts(s))),field('method','Forma de pagamento',sel('method',item?.paymentMethod||'pix',Object.entries(METHODS).filter(([k])=>k!=='credit'))),type==='expense'?field('category','Categoria',sel('category',item?.category||(pension?'Pensão':'Outros'),CATEGORIES.map(c=>[c,c]))):field('source','Origem',sel('source',item?.source||'company',Object.entries(SOURCES))),field('startMonth','Primeiro mês',inp('startMonth',item?.startMonth||month,'month',{required:true,min:'2000-01',max:'2200-12'})),field('endMonth','Último mês (opcional)',inp('endMonth',item?.endMonth||'','month',{min:'2000-01',max:'2200-12'})));
   }
+  function BirthdayForm({item,onClose,onSave}) {
+    const [photo,setPhoto]=React.useState(item?.photo||null);
+    const [hasYear,setHasYear]=React.useState(item?.hasYear!==false);
+    const [name,setName]=React.useState(item?.name||'');
+    const [date,setDate]=React.useState(item?.date||today());
+    const [phone,setPhone]=React.useState(item?.phone||'');
+    const [relationship,setRelationship]=React.useState(item?.relationship||'Família');
+    const [notes,setNotes]=React.useState(item?.notes||'');
+    const [notifyDays,setNotifyDays]=React.useState(item?.notifyDays||DEFAULT_NOTIFY_DAYS);
+    function handlePhoto(e){
+      const file=e.target.files?.[0];
+      if(!file)return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        const img=new Image();
+        img.onload=()=>{
+          const canvas=document.createElement('canvas');
+          const max=256;
+          let w=img.width,h=img.height;
+          if(w>h){if(w>max){h=Math.round(h*max/w);w=max;}}
+          else{if(h>max){w=Math.round(w*max/h);h=max;}}
+          canvas.width=w;canvas.height=h;
+          const ctx=canvas.getContext('2d');
+          ctx.drawImage(img,0,0,w,h);
+          setPhoto(canvas.toDataURL('image/jpeg',0.82));
+        };
+        img.src=ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+    const toggleNotify=d=>setNotifyDays(notifyDays.includes(d)?notifyDays.filter(n=>n!==d):[...notifyDays,d]);
+    return h(Modal,{
+      title:item?'Editar aniversário':'Novo aniversário',
+      onClose,
+      onSubmit:async()=>{
+        if(!name.trim())throw new Error('Informe o nome da pessoa.');
+        if(!date)throw new Error('Informe a data do aniversário.');
+        await onSave({
+          id:item?.id,
+          name:name.trim(),
+          date,
+          hasYear,
+          photo,
+          phone:phone.trim()||null,
+          relationship,
+          notes:notes.trim()||null,
+          notifyDays,
+          active:item?.active??true
+        });
+      },
+      hint:'Lembretes serão enviados automaticamente ao seu iPhone: 1 mês, 1 semana, 3 dias antes e no dia do aniversário.'
+    },
+      h('div',{className:'nf-field full'},
+        h('span',{},'Foto da pessoa (opcional)'),
+        h('div',{className:'nf-photo-uploader'},
+          photo?h('div',{className:'nf-photo-preview-box'},
+            h('img',{src:photo,alt:'Preview',className:'nf-photo-preview'}),
+            h('button',{type:'button',className:'nf-button small',onClick:()=>setPhoto(null)},'Remover foto')
+          ):h('div',{className:'nf-photo-placeholder'},
+            h('span',{},'👤 Nenhuma foto selecionada'),
+            h('label',{className:'nf-button small nf-upload-btn'},
+              'Escolher ou tirar foto',
+              h('input',{type:'file',accept:'image/*',onChange:handlePhoto,className:'hidden'})
+            )
+          )
+        )
+      ),
+      field('name','Nome completo',h('input',{name:'name',value:name,onChange:e=>setName(e.target.value),required:true,maxLength:160,placeholder:'Ex.: Maria Silva, João'}),true),
+      field('date','Data de nascimento',h('input',{type:'date',name:'date',value:date,onChange:e=>setDate(e.target.value),required:true,min:'1900-01-01',max:'2200-12-31'}),true),
+      h('label',{className:'nf-check full'},
+        h('input',{type:'checkbox',checked:!hasYear,onChange:e=>setHasYear(!e.target.checked)}),
+        'Não sei o ano de nascimento (calcular apenas dia e mês)'
+      ),
+      field('relationship','Parentesco / Categoria',h('select',{name:'relationship',value:relationship,onChange:e=>setRelationship(e.target.value)},
+        [['Família','Família'],['Amigos','Amigos'],['Trabalho','Trabalho'],['Outros','Outros']].map(([v,l])=>h('option',{key:v,value:v},l))
+      )),
+      field('phone','WhatsApp / Celular (opcional)',h('input',{name:'phone',value:phone,onChange:e=>setPhone(e.target.value),placeholder:'11999999999',maxLength:30})),
+      field('notes','Ideias de presente / Anotações',h('textarea',{name:'notes',value:notes,onChange:e=>setNotes(e.target.value),placeholder:'Gosta de chocolates, livros, café...',rows:2,maxLength:500})),
+      h('div',{className:'full nf-notify-group'},
+        h('span',{className:'nf-notify-label'},'Avisos no iPhone:'),
+        h('div',{className:'nf-reminder-days'},
+          [[30,'1 mês antes'],[7,'1 semana antes'],[3,'3 dias antes'],[0,'No dia']].map(([d,l])=>
+            h('label',{key:d,className:'nf-check'},
+              h('input',{type:'checkbox',checked:notifyDays.includes(d),onChange:()=>toggleNotify(d)}),
+              l
+            )
+          )
+        )
+      )
+    );
+  }
   return {useWallet,Workspace,CardModal,TransactionModal,HomeConnections,NotificationModal,NotificationCenter,reminderCount:s=>payableReminders(s).length,transactions,legacyCards,balance,weeklyData,spentToday,calendarAppointments,currentAppointments:date=>calendarAppointments(snapshot.state,date),calendarTransactions:rows=>rows,statisticsRows,monthWeeks,insight,budget:s=>summary(s,monthNow()).expenseCents+commitmentSummary(s,monthNow()).expenseCents,monthLabel:()=>new Date(today()+'T12:00:00').toLocaleDateString('pt-BR',{month:'long'}),summary:s=>summary(s,monthNow()),money,saveCard,deleteCard};
 }

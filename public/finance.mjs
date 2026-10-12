@@ -27,6 +27,11 @@ export function validDate(s) {
   const [y,m,d] = s.split('-').map(Number), dt = new Date(y,m-1,d);
   return y >= 2000 && y <= 2200 && dt.getFullYear() === y && dt.getMonth() === m-1 && dt.getDate() === d;
 }
+export function validBirthDate(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y,m,d] = s.split('-').map(Number), dt = new Date(y,m-1,d);
+  return y >= 1900 && y <= 2200 && dt.getFullYear() === y && dt.getMonth() === m-1 && dt.getDate() === d;
+}
 export function addMonths(date, n, day) {
   const [y,m,d] = date.split('-').map(Number), dt = new Date(y,m-1+n,1);
   const last = new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();
@@ -102,7 +107,7 @@ export function validateState(s) {
   if (s.birthdays) {
     assert(Array.isArray(s.birthdays) && s.birthdays.length <= 10000, 'Lista de aniversários inválida.');
     for (const b of s.birthdays) {
-      assert(b && shortText(b.id) && !ids.has(b.id) && shortText(b.name) && validDate(b.date), 'Aniversário inválido.');
+      assert(b && shortText(b.id) && !ids.has(b.id) && shortText(b.name) && validBirthDate(b.date), 'Aniversário inválido.');
       ids.add(b.id);
       assert(!b.phone || (typeof b.phone === 'string' && b.phone.length <= 40), 'Telefone inválido.');
       assert(!b.photo || (typeof b.photo === 'string' && b.photo.length <= 500000), 'Foto inválida.');
