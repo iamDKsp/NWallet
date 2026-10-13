@@ -5,11 +5,31 @@
 
 /* 1. Root & Viewport Lock: Prevents elastic bouncing, page pan, and unwanted zooming */
 @media (max-width: 767px) {
-  html,
+  html {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    min-height: calc(100% + env(safe-area-inset-top, 0px)) !important;
+    min-height: -webkit-fill-available !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: pan-y !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-text-size-adjust: 100% !important;
+    background-color: #05080d !important;
+  }
+
   body {
     width: 100% !important;
     height: 100% !important;
     min-height: 100% !important;
+    min-height: calc(100% + env(safe-area-inset-top, 0px)) !important;
+    min-height: -webkit-fill-available !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
@@ -27,6 +47,8 @@
     width: 100% !important;
     height: 100% !important;
     min-height: 100% !important;
+    min-height: calc(100% + env(safe-area-inset-top, 0px)) !important;
+    min-height: -webkit-fill-available !important;
     overflow: hidden !important;
     position: fixed !important;
     inset: 0 !important;
@@ -37,6 +59,14 @@
     display: flex !important;
     flex-direction: column !important;
     background-color: #05080d !important;
+  }
+
+  /* Full height propagation for iOS PWA standalone root child trees */
+  #root > div,
+  #root > div > div,
+  #root > div > div > div {
+    min-height: 100% !important;
+    min-height: -webkit-fill-available !important;
   }
 
   /* 2. Inertial Native Scrolling in Scroll Areas */

@@ -4,6 +4,18 @@
   const root = document.getElementById('root');
   if (!root) return;
 
+  // 0. iOS PWA Standalone Mode Viewport Stabilizer
+  if (typeof window !== 'undefined') {
+    const isStandalone = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (isStandalone) {
+      document.documentElement.classList.add('ios-pwa-standalone');
+      const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (statusBarMeta && statusBarMeta.getAttribute('content') !== 'black-translucent') {
+        statusBarMeta.setAttribute('content', 'black-translucent');
+      }
+    }
+  }
+
   const navigation = {
     'nav-home': 'Início',
     'nav-statistic': 'Estatísticas',
